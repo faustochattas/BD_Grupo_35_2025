@@ -7,7 +7,7 @@ CREATE TABLE BDGRUPO.Provincia (
 );
 
 -- LOCALIDAD
-CREATE TABLE BDGRUPO.Loclida (
+CREATE TABLE BDGRUPO.Localidad (
     Localidad_Nombre NVARCHAR(100) PRIMARY KEY,
     Localidad_Provincia NVARCHAR(100),
     FOREIGN KEY (Localidad_Provincia) REFERENCES Provincia(Provincia_Nombre)
@@ -52,7 +52,7 @@ CREATE TABLE BDGRUPO.Material (
     Material_Nombre NVARCHAR(100) PRIMARY KEY,
     Material_Descripcion NVARCHAR(255),
     Material_Precio DECIMAL(10,2),
-    Material_Tipo NVARCHAR(100),
+    Material_Tipo NVARCHAR(100)
 );
 
 -- TELA
@@ -199,9 +199,152 @@ CREATE TABLE BDGRUPO.Envio (
     FOREIGN KEY (Factura_Numero) REFERENCES Factura(Factura_Numero)
 );
 
+-- //////////////////////////////////////////////////////////////
+
+CREATE PROCEDURE BDGRUPO.Migrar_Datos
+AS
+BEGIN
+
 --ASIGNACION DE LOS VALORES DE TABLA MAESTRA A LAS TABLAS CREADAS
+
+--Provincia
 INSERT INTO BDGRUPO.Provincia (Provincia_Nombre)
 SELECT DISTINCT Localidad_Provincia
 FROM gd_esquema.Maestra
 WHERE Localidad_Provincia IS NOT NULL;
+
+--Localidad
+INSERT INTO BDGRUPO.Localidad (Localidad_Nombre, Localidad_Provincia)
+SELECT DISTINCT L.Localidad_Nombre, L.Localidad_Provincia
+FROM (
+    SELECT Sucursal_Localidad AS Localidad_Nombre, Sucursal_Provincia AS Localidad_Provincia
+    FROM gd_esquema.Maestra
+    UNION
+    SELECT Cliente_Localidad AS Localidad_Nombre, Cliente_Provincia AS Localidad_Provincia
+    FROM gd_esquema.Maestra
+    UNION
+    SELECT Proveedor_Localidad AS Localidad_Nombre, Proveedor_Provincia AS Localidad_Provincia
+    FROM gd_esquema.Maestra
+) L;
+
+--Cliente
+INSERT INTO BDGRUPO.Cliente (Cliente_Dni, Cliente_Apellido, Cliente_Nombre, Cliente_Localidad, Cliente_Mail, Cliente_FechaNacimiento, Cliente_Telefono, Cliente_Direccion)
+SELECT 
+Cliente_Dni, Cliente_Apellido, Cliente_Nombre, Cliente_Localidad, Cliente_Mail, Cliente_FechaNacimiento, Cliente_Telefono, Cliente_Direccion
+FROM gd_esquema.Maestra 
+
+--Sucursal
+INSERT INTO BDGRUPO.Sucursal (Sucursal_NroSucursal, Sucursal_Localidad, Sucursal_Direccion, Sucursal_Telefono, Sucursal_Mail) 
+SELECT DISTINCT Sucursal_NroSucursal, Sucursal_Localidad, Sucursal_Direccion, Sucursal_Telefono, Sucursal_Mail
+FROM gd_esquema.Maestra
+WHERE Sucursal_NroSucursal IS NOT NULL;
+
+--Proveedor
+INSERT INTO BDGRUPO.Proveedor (PrCuit, Proveedor_Telefono, Proveedor_Mail, Proveedor_Direccion, Proveedor_Localidad, Proveedor_RazonSocial)
+SELECT
+Proveedor_Cuit, Proveedor_Telefono, Proveedor_Mail, Proveedor_Direccion, Proveedor_Localidad, Proveedor_RazonSocial 
+FROM gd_esquema.Maestra
+
+
+--Material
+INSERT INTO BDGRUPO.Material (Material_Nombre, Material_Descripcion, Material_Precio, Material_Tipo)
+SELECT DISTINCT Material_Nombre, Material_Descripcion, Material_Precio, Material_Tipo
+FROM gd_esquema.Maestra
+WHERE Material_Nombre IS NOT NULL;
+
+--Tela 
+INSERT INTO BDGRUPO.Tela (Tela_Tipo, Tela_Color, Tela_Textura)
+SELECT DISTINCT Tela_Tipo, Tela_Color, Tela_Textura
+FROM gd_esquema.Maestra
+WHERE Tela_Tipo IS NOT NULL;
+
+--Relleno
+INSERT INTO BDGRUPO.Relleno (Relleno_Tipo, Relleno_Densidad)
+SELECT DISTINCT Relleno_Tipo, Relleno_Densidad
+FROM gd_esquema.Maestra
+WHERE Relleno_Tipo IS NOT NULL;
+
+--Madera
+INSERT INTO BDGRUPO.Madera (Madera_Tipo, Madera_Color, Madera_Dureza)
+SELECT DISTINCT Madera_Tipo, Madera_Color, Madera_Dureza
+FROM gd_esquema.Maestra
+WHERE Madera_Tipo IS NOT NULL;
+
+--Sillon
+INSERT INTO Sillon (Sillon_Codigo, Sillon_Modelo_Codigo, Sillon_Medida_Codigo, Material_Nombre)
+SELECT DISTINCT Sillon_Codigo, Sillon_Modelo_Codigo, Sillon_Codigo, Material_Nombre
+FROM gd_esquema.Maestra
+WHERE Sillon_Codigo IS NOT NULL;
+
+
+--MaterialPorSillon
+INSERT INTO BDGRUPO.Sillon (Sillon_Codigo, Sillon_Modelo_Codigo, Medida_Codigo, Material_Nombre)
+SELECT DISTINCT Sillon_Codigo, Sillon_Modelo_Codigo, Medida_Codigo, Material_Nombre
+FROM gd_esquema.Maestra
+WHERE Sillon_Codigo IS NOT NULL;
+
+
+--Medida
+INSERT INTO Medida (Medida_Codigo, Medida_Alto, Medida_Ancho, Medida_Profundidad, Medida_Precio)
+SELECT DISTINCT Sillon_Codigo, Sillon_Medida_Alto, Sillon_Medida_Ancho, Sillon_Medida_Profundidad, Sillon_Medida_Precio
+FROM gd_esquema.Maestra
+WHERE Sillon_Codigo IS NOT NULL;
+
+--Modelo
+INSERT INTO Modelo (Modelo_Codigo, Modelo_Descripcion, Modelo_Precio)
+SELECT DISTINCT Sillon_Modelo_Codigo, Sillon_Modelo_Descripcion, Sillon_Modelo_Precio
+FROM gd_esquema.Maestra
+WHERE Sillon_Modelo_Codigo IS NOT NULL;
+
+
+--detalleCompra
+INSERT INTO BDGRUPO.DetalleCompra (Detalle_Compra_ID, Material_Nombre, Detalle_Compra_Precio, Detalle_Compra_Cantidad, Detalle_Compra_Subtotal)
+SELECT DISTINCT Detalle_Compra_ID, Material_Nombre, Detalle_Compra_Precio, Detalle_Compra_Cantidad, Detalle_Compra_Subtotal
+FROM gd_esquema.Maestra
+WHERE Detalle_Compra_ID IS NOT NULL;
+
+--Compra
+INSERT INTO BDGRUPO.Compra (Compra_Numero, Sucursal_NroSucursal, Proveedor_Cuit, Detalle_Compra_ID, Compra_Fecha, Compra_Total)
+SELECT DISTINCT Compra_Numero, Sucursal_NroSucursal, Proveedor_Cuit, Detalle_Compra_ID, Compra_Fecha, Compra_Total
+FROM gd_esquema.Maestra
+WHERE Compra_Numero IS NOT NULL;
+
+--Pedido
+INSERT INTO BDGRUPO.Pedido (Pedido_Numero, Pedido_Cliente, Pedido_Sucursal, Pedido_Estado, Pedido_CancelacionPedido, Pedido_Fecha, Pedido_Total)
+SELECT DISTINCT Pedido_Numero, Pedido_Cliente, Pedido_Sucursal, Pedido_Estado, Pedido_CancelacionPedido, Pedido_Fecha, Pedido_Total
+FROM gd_esquema.Maestra
+WHERE Pedido_Numero IS NOT NULL;
+
+--Detalle Pedido
+INSERT INTO Detalle_Pedido (Pedido_Numero, Sillon_Codigo, Detalle_Pedido_Cantidad, Detalle_Pedido_Precio, Detalle_Pedido_SubTotal)
+SELECT DISTINCT Pedido_Numero, Sillon_Codigo, Detalle_Pedido_Cantidad, Detalle_Pedido_Precio, Detalle_Pedido_SubTotal
+FROM gd_esquema.Maestra
+WHERE Pedido_Numero IS NOT NULL AND Sillon_Codigo IS NOT NULL;
+
+--Cancelacion Pedido
+INSERT INTO CancelacionPedido (Cancelacion_ID, Pedido_Cancelacion_Fecha, Pedido_Cancelacion_Motivo)
+SELECT DISTINCT Pedido_Numero, Pedido_Cancelacion_Fecha, Pedido_Cancelacion_Motivo
+FROM gd_esquema.Maestra
+WHERE Pedido_Cancelacion_Fecha IS NOT NULL;
+
+--Factura
+INSERT INTO Factura (Factura_Numero, Factura_Fecha, Factura_Sucursal, Factura_Total)
+SELECT DISTINCT Factura_Numero, Factura_Fecha, Sucursal_NroSucursal, Factura_Total
+FROM gd_esquema.Maestra
+WHERE Factura_Numero IS NOT NULL;
+
+--Detalle Factura
+INSERT INTO Detalle_Factura (Factura_Numero, Detalle_Factura_Cantidad, Detalle_Factura_Precio, Detalle_Factura_SubTotal)
+SELECT DISTINCT Factura_Numero, Detalle_Factura_Cantidad, Detalle_Factura_Precio, Detalle_Factura_SubTotal
+FROM gd_esquema.Maestra
+WHERE Factura_Numero IS NOT NULL;
+
+--Envio
+INSERT INTO Envio (Envio_Numero, Factura_Numero, Envio_Fecha_Programada, Envio_Fecha, Envio_ImporteTraslado, Envio_ImporteSubida, Envio_Total)
+SELECT DISTINCT Envio_Numero, Factura_Numero, Envio_Fecha_Programada, Envio_Fecha, Envio_ImporteTraslado, Envio_ImporteSubida, Envio_Total
+FROM gd_esquema.Maestra
+WHERE Envio_Numero IS NOT NULL;
+
+END;
+GO
 
