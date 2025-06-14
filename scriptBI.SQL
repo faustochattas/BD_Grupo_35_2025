@@ -109,6 +109,30 @@ CREATE TABLE BDGRUPOBI.HechoCompras (
 );
 GO
 
+/*
+-- HECHO_PEDIDOS
+CREATE TABLE BDGRUPO.BI_HechoPedidos (
+    Pedido_Numero DECIMAL(18,0) PRIMARY KEY,
+    Tiempo_ID INT,
+    Cliente_ID BIGINT,
+    Sucursal_ID BIGINT,
+    Estado NVARCHAR(50),
+    FOREIGN KEY (Tiempo_ID) REFERENCES BDGRUPO.BI_DimTiempo(Tiempo_ID),
+    FOREIGN KEY (Cliente_ID) REFERENCES BDGRUPO.BI_DimCliente(Cliente_ID),
+    FOREIGN KEY (Sucursal_ID) REFERENCES BDGRUPO.BI_DimSucursal(Sucursal_ID)
+);
+GO
+
+-- HECHO_ENVIOS
+CREATE TABLE BDGRUPO.BI_HechoEnvios (
+    Envio_Numero DECIMAL(18,0) PRIMARY KEY,
+    Tiempo_ID INT,
+    Cliente_Localidad NVARCHAR(100),
+    ImporteEnvio DECIMAL(10,2),
+    CumplidoEnFecha BIT
+);
+GO
+*/
 
 -- CARGA DE DATOS DIMENSIONES
 
