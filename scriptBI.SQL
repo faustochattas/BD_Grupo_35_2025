@@ -246,7 +246,24 @@ HechoCompras c
 INNER JOIN DimTiempo t ON c.Tiempo_ID = t.Tiempo_ID
 GROUP BY t.Mes, t.Anio
 
-
 --8 Compras por tipo de material
+CREATE VIEW vista_compras_material AS
+SELECT
+m.Tipo,
+SUM(c.Total) AS importe_total,
+s.Sucursal_ID,
+t.Cuatrimestre,
+t.Anio
+FROM
+HechoCompras c
+INNER JOIN DimMaterial m ON c.Material_ID = m.Material_ID
+INNER JOIN DimSucursal s ON c.Sucursal_ID = s.Sucursal_ID
+INNER JOIN DimTiempo t ON c.Tiempo_ID = t.Tiempo_ID
+GROUP BY 
+m.Tipo,
+s.Sucursal_ID,
+t.Cuatrimestre,
+t.Anio
+
 --9 Porcentaje de cumplimiento de envios
 --10 Localidades que pagan mayor costo de envio
