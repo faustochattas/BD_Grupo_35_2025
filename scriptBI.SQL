@@ -127,7 +127,7 @@ CREATE TABLE BDGRUPOBI.HechoPedidos (
 GO
 
 -- HECHO_ENVIOS
-CREATE TABLE BDGRUPO.BI_HechoEnvios (
+CREATE TABLE BDGRUPOBI.HechoEnvios (
     Envio_Numero DECIMAL(18,0) PRIMARY KEY,
     Tiempo_ID INT,
     Cliente_Localidad NVARCHAR(100),
@@ -304,4 +304,16 @@ t.Cuatrimestre,
 t.Anio
 
 --9 Porcentaje de cumplimiento de envios
+CREATE VIEW vista_cumplimiento_envios AS
+SELECT 
+((COUNT(CASE WHEN e.CumplidoEnFecha = 1 THEN 1 END) * 100.0) / COUNT(DISTINCT e.Envio_Numero)) AS porcentaje_cumplimiento,
+t.Mes,
+t.Anio
+FROM
+HechoEnvios e
+INNER JOIN DimTiempo t ON e.Fecha_ID = t.Fecha_ID
+GROUP BY 
+t.Mes,
+t.Anio
+
 --10 Localidades que pagan mayor costo de envio
