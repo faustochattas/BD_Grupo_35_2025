@@ -62,7 +62,7 @@ CREATE TABLE BDGRUPO.Cliente (
     Cliente_Nombre NVARCHAR(100),
     Cliente_Localidad BIGINT,
     Cliente_Mail NVARCHAR(100),
-    Cliente_FechaNacimiento DATE,
+    Cliente_FechaNacimiento DATETIME2(6),
     Cliente_Telefono NVARCHAR(20),
     Cliente_Direccion NVARCHAR(255),
     FOREIGN KEY (Cliente_Localidad) REFERENCES BDGRUPO.Localidad(Localidad_ID)
@@ -164,7 +164,7 @@ CREATE TABLE BDGRUPO.Compra (
     Compra_Numero DECIMAL(18, 0) PRIMARY KEY,
     Sucursal_NroSucursal BIGINT,
     Proveedor_Cuit NVARCHAR(255),
-    Compra_Fecha DATE,
+    Compra_Fecha DATETIME2(6),
     Compra_Total DECIMAL(10,2),
     FOREIGN KEY (Sucursal_NroSucursal) REFERENCES BDGRUPO.Sucursal(Sucursal_NroSucursal),
     FOREIGN KEY (Proveedor_Cuit) REFERENCES BDGRUPO.Proveedor(Proveedor_Cuit)
@@ -190,7 +190,7 @@ CREATE TABLE BDGRUPO.Pedido (
     Pedido_Cliente BIGINT,
     Pedido_Sucursal BIGINT,
     Pedido_Estado NVARCHAR(50),
-    Pedido_Fecha DATE,
+    Pedido_Fecha DATETIME2(6),
     Pedido_Total DECIMAL(10, 2),
     FOREIGN KEY (Pedido_Cliente) REFERENCES BDGRUPO.Cliente(Cliente_Dni),
     FOREIGN KEY (Pedido_Sucursal) REFERENCES BDGRUPO.Sucursal(Sucursal_NroSucursal)
@@ -201,7 +201,7 @@ GO
 CREATE TABLE BDGRUPO.CancelacionPedido (
     Cancelacion_ID BIGINT PRIMARY KEY IDENTITY(1,1),
     Pedido_Numero DECIMAL(18, 0),
-    Pedido_Cancelacion_Fecha DATE,
+    Pedido_Cancelacion_Fecha DATETIME2(6),
     Pedido_Cancelacion_Motivo NVARCHAR(255),
     FOREIGN KEY (Pedido_Numero) REFERENCES BDGRUPO.Pedido(Pedido_Numero)
 );
@@ -223,7 +223,7 @@ GO
 -- FACTURA
 CREATE TABLE BDGRUPO.Factura (
     Factura_Numero BIGINT PRIMARY KEY,
-    Factura_Fecha DATE,
+    Factura_Fecha DATETIME2(6),
     Factura_Sucursal BIGINT,
     Factura_Total DECIMAL(10,2),
     FOREIGN KEY (Factura_Sucursal) REFERENCES BDGRUPO.Sucursal(Sucursal_NroSucursal)
@@ -246,8 +246,8 @@ GO
 CREATE TABLE BDGRUPO.Envio (
     Envio_Numero DECIMAL(18, 0) PRIMARY KEY,
     Factura_Numero BIGINT,
-    Envio_Fecha_Programada DATE,
-    Envio_Fecha DATE,
+    Envio_Fecha_Programada DATETIME2(6),
+    Envio_Fecha DATETIME2(6),
     Envio_ImporteTraslado DECIMAL(10,2),
     Envio_ImporteSubida DECIMAL(10,2),
     Envio_Total DECIMAL(10,2),
