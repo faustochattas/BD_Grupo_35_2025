@@ -206,6 +206,9 @@ JOIN BDGRUPO.BI_DimSucursal s ON s.Sucursal_ID = c.Compra_Sucursal;
 
 
 --VISTAS
+--1 Ganancias
+--2 Factura Promedio Mensual
+--3 Rendimiento de Modelos
 
 --4 Volumen de Pedidos
 CREATE VIEW vista_volumen_pedidos AS
@@ -228,3 +231,22 @@ t.Turno,
 d.Mes, 
 d.Anio, 
 s.Sucursal_ID
+
+--5 Conversion de pedidos
+--6 Tiempo promedio de fabricacion
+
+--7 Promedio de Compras
+CREATE VIEW vista_promedio_compras AS
+SELECT
+AVG(c.Total) AS importe_promedio_compra,
+t.Mes
+t.Anio
+FROM
+HechoCompras c
+INNER JOIN DimTiempo t ON c.Tiempo_ID = t.Tiempo_ID
+GROUP BY t.Mes, t.Anio
+
+
+--8 Compras por tipo de material
+--9 Porcentaje de cumplimiento de envios
+--10 Localidades que pagan mayor costo de envio
