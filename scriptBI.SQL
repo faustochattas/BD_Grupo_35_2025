@@ -214,6 +214,22 @@ JOIN BDGRUPO.BI_DimSucursal s ON s.Sucursal_ID = c.Compra_Sucursal;
 
 --VISTAS
 --1 Ganancias
+CREATE VIEW vista_ganancias AS
+SELECT
+ISNULL(SUM(v.Total), 0) - ISNULL(SUM(c.Total), 0) AS ganancia,
+s.Sucursal,
+t.Mes,
+t.Anio
+FROM
+HechoVentas v 
+INNER JOIN DimSucursal s ON v.Sucursal_ID = s.Sucursal_ID
+INNER JOIN HechoCompras c ON c.Sucursal_ID = s.Sucursal_ID
+INNER JOIN DimTiempo t ON v.Tiempo_ID = t.Tiempo_ID AND c.Tiempo_ID = t.Tiempo_ID
+GROUP BY
+s.Sucursal_ID,
+t.Mes,
+t.Anio
+
 --2 Factura Promedio Mensual
 --3 Rendimiento de Modelos
 
