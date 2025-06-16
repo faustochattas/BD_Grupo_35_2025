@@ -87,6 +87,7 @@ GO
 CREATE TABLE BDGRUPOBI.HechoVentas (
     Factura_Numero BIGINT PRIMARY KEY,
     Tiempo_ID INT,
+    TiempoFabricacion INT,
     Cliente_ID BIGINT,
     Sucursal_ID BIGINT,
     Total DECIMAL(10,2),
@@ -113,7 +114,7 @@ GO
 -- HECHO_PEDIDOS
 CREATE TABLE BDGRUPOBI.HechoPedidos (
     Pedido_Numero DECIMAL(18,0) PRIMARY KEY,
-    Fecha_ID INT
+    Fecha_ID INT,
     Turno_ID INT,
     Cliente_ID BIGINT,
     Sucursal_ID BIGINT,
@@ -188,8 +189,14 @@ FROM BDGRUPO.Material;
 
 -- CARGA DE DATOS HECHOS
 -- Ventas
-INSERT INTO BDGRUPO.BI_HechoVentas (Factura_Numero, Tiempo_ID, Cliente_ID, Sucursal_ID, Total)
-SELECT f.Factura_Numero, t.Tiempo_ID, p.Pedido_Cliente, f.Factura_Sucursal, f.Factura_Total
+INSERT INTO BDGRUPO.BI_HechoVentas (Factura_Numero, Tiempo_ID, TiempoFabricacion Cliente_ID, Sucursal_ID, Total)
+SELECT 
+f.Factura_Numero, 
+t.Tiempo_ID,
+DATEDIFF(HOURS, p.Pedido_Fecha, f.Factura_Fecha),
+p.Pedido_Cliente, 
+f.Factura_Sucursal, 
+f.Factura_Total
 FROM BDGRUPO.Factura f
 JOIN BDGRUPO.FacturaDetalle fd ON f.Factura_Numero = fd.Factura_Numero
 JOIN BDGRUPO.DetallePedido dp ON fd.Detalle_Factura_Pedido_ID = dp.Detalle_Pedido_ID
@@ -234,6 +241,21 @@ s.Sucursal_ID
 
 --5 Conversion de pedidos
 --6 Tiempo promedio de fabricacion
+CREATE VIEW vista_tiempo_promedio_fabricacion AS
+SELECT
+AVG(v.TiempoFabricacion) AS tiempo_promedio_fabricacion_horas,
+s.Sucursal_ID,
+t.Cuatrimestre,
+t.Anio
+FROM
+HechoVentas v 
+INNER JOIN DimSucursal s ON v.Sucursal_ID = s.Sucursal_ID
+INNER JOIN DimTiempo t ON v.Tiempo_ID = t.Tiempo_ID
+GROUP BY
+s.Sucursal_ID,
+t.Cuatrimestre,
+t.Anio
+
 
 --7 Promedio de Compras
 CREATE VIEW vista_promedio_compras AS
