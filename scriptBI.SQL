@@ -111,15 +111,17 @@ GO
 
 /*
 -- HECHO_PEDIDOS
-CREATE TABLE BDGRUPO.BI_HechoPedidos (
+CREATE TABLE BDGRUPOBI.HechoPedidos (
     Pedido_Numero DECIMAL(18,0) PRIMARY KEY,
-    Tiempo_ID INT,
+    Fecha_ID INT
+    Turno_ID INT,
     Cliente_ID BIGINT,
     Sucursal_ID BIGINT,
     Estado NVARCHAR(50),
-    FOREIGN KEY (Tiempo_ID) REFERENCES BDGRUPO.BI_DimTiempo(Tiempo_ID),
-    FOREIGN KEY (Cliente_ID) REFERENCES BDGRUPO.BI_DimCliente(Cliente_ID),
-    FOREIGN KEY (Sucursal_ID) REFERENCES BDGRUPO.BI_DimSucursal(Sucursal_ID)
+    FOREIGN KEY (Fecha_ID) REFERENCES BDGRUPOBI.DimTiempo(Tiempo_ID),
+    FOREIGN KEY (Turno_ID) REFERENCES BDGRUPOBI.DimTurno(Turno_ID),
+    FOREIGN KEY (Cliente_ID) REFERENCES BDGRUPOBI.DimCliente(Cliente_ID),
+    FOREIGN KEY (Sucursal_ID) REFERENCES BDGRUPOBI.DimSucursal(Sucursal_ID)
 );
 GO
 
@@ -201,3 +203,28 @@ FROM BDGRUPO.Compra c
 JOIN BDGRUPO.BI_DimTiempo t ON t.Fecha = c.Compra_Fecha
 JOIN BDGRUPO.BI_DimMaterial m ON m.Material_ID = c.Compra_Material
 JOIN BDGRUPO.BI_DimSucursal s ON s.Sucursal_ID = c.Compra_Sucursal;
+
+
+--VISTAS
+
+--4 Volumen de Pedidos
+CREATE VIEW vista_volumen_pedidos AS
+SELECT
+COUNT(DISTINCT p.Pedido_Numero) AS cantidad_pedidos,
+t.Turno,
+d.Mes,
+d.Anio,
+s.Sucursal_ID
+FROM 
+HechoPedidos p
+INNER JOIN
+DimTurno t ON p.Turno_ID = t.Turno_ID
+INNER JOIN 
+DimTiempo d ON p.Fecha_ID = d.Fecha_ID
+INNER JOIN
+DimSucursal s ON p.Sucursal_ID = s.Sucursal_ID
+GROUP BY 
+t.Turno, 
+d.Mes, 
+d.Anio, 
+s.Sucursal_ID
