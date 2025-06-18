@@ -62,7 +62,7 @@ CREATE TABLE BDGRUPO.Cliente (
     Cliente_Nombre NVARCHAR(100),
     Cliente_Localidad BIGINT,
     Cliente_Mail NVARCHAR(100),
-    Cliente_FechaNacimiento DATETIME2(6),
+    Cliente_FechaNacimiento DATE,
     Cliente_Telefono NVARCHAR(20),
     Cliente_Direccion NVARCHAR(255),
     FOREIGN KEY (Cliente_Localidad) REFERENCES BDGRUPO.Localidad(Localidad_ID)
@@ -164,7 +164,7 @@ CREATE TABLE BDGRUPO.Compra (
     Compra_Numero DECIMAL(18, 0) PRIMARY KEY,
     Sucursal_NroSucursal BIGINT,
     Proveedor_Cuit NVARCHAR(255),
-    Compra_Fecha DATETIME2(6),
+    Compra_Fecha DATE,
     Compra_Total DECIMAL(10,2),
     FOREIGN KEY (Sucursal_NroSucursal) REFERENCES BDGRUPO.Sucursal(Sucursal_NroSucursal),
     FOREIGN KEY (Proveedor_Cuit) REFERENCES BDGRUPO.Proveedor(Proveedor_Cuit)
@@ -190,7 +190,7 @@ CREATE TABLE BDGRUPO.Pedido (
     Pedido_Cliente BIGINT,
     Pedido_Sucursal BIGINT,
     Pedido_Estado NVARCHAR(50),
-    Pedido_Fecha DATETIME2(6),
+    Pedido_Fecha DATE,
     Pedido_Total DECIMAL(10, 2),
     FOREIGN KEY (Pedido_Cliente) REFERENCES BDGRUPO.Cliente(Cliente_Dni),
     FOREIGN KEY (Pedido_Sucursal) REFERENCES BDGRUPO.Sucursal(Sucursal_NroSucursal)
@@ -201,7 +201,7 @@ GO
 CREATE TABLE BDGRUPO.CancelacionPedido (
     Cancelacion_ID BIGINT PRIMARY KEY IDENTITY(1,1),
     Pedido_Numero DECIMAL(18, 0),
-    Pedido_Cancelacion_Fecha DATETIME2(6),
+    Pedido_Cancelacion_Fecha DATE,
     Pedido_Cancelacion_Motivo NVARCHAR(255),
     FOREIGN KEY (Pedido_Numero) REFERENCES BDGRUPO.Pedido(Pedido_Numero)
 );
@@ -223,7 +223,7 @@ GO
 -- FACTURA
 CREATE TABLE BDGRUPO.Factura (
     Factura_Numero BIGINT PRIMARY KEY,
-    Factura_Fecha DATETIME2(6),
+    Factura_Fecha DATE,
     Factura_Sucursal BIGINT,
     Factura_Total DECIMAL(10,2),
     FOREIGN KEY (Factura_Sucursal) REFERENCES BDGRUPO.Sucursal(Sucursal_NroSucursal)
@@ -233,12 +233,12 @@ GO
 CREATE TABLE BDGRUPO.FacturaDetalle (
     Detalle_ID BIGINT PRIMARY KEY IDENTITY(1,1),
     Factura_Numero BIGINT,
-    Detalle_Pedido_ID BIGINT,
+    Detalle_Factura_Pedido_ID BIGINT,
     Detalle_Factura_Cantidad BIGINT,
     Detalle_Factura_Precio DECIMAL(10, 2),
     Detalle_Factura_SubTotal DECIMAL(10, 2),
     FOREIGN KEY (Factura_Numero) REFERENCES BDGRUPO.Factura(Factura_Numero),
-    FOREIGN KEY (Detalle_Pedido_ID) REFERENCES BDGRUPO.DetallePedido(Detalle_Pedido_ID)
+    FOREIGN KEY (Detalle_Factura_Pedido_ID) REFERENCES BDGRUPO.DetallePedido(Detalle_Pedido_ID)
 );
 GO
 
@@ -246,8 +246,8 @@ GO
 CREATE TABLE BDGRUPO.Envio (
     Envio_Numero DECIMAL(18, 0) PRIMARY KEY,
     Factura_Numero BIGINT,
-    Envio_Fecha_Programada DATETIME2(6),
-    Envio_Fecha DATETIME2(6),
+    Envio_Fecha_Programada DATE,
+    Envio_Fecha DATE,
     Envio_ImporteTraslado DECIMAL(10,2),
     Envio_ImporteSubida DECIMAL(10,2),
     Envio_Total DECIMAL(10,2),
@@ -410,10 +410,20 @@ FROM gd_esquema.Maestra
 WHERE Factura_Numero IS NOT NULL;
 
 --Detalle Factura
-INSERT INTO BDGRUPO.FacturaDetalle (Factura_Numero, Detalle_Factura_Cantidad, Detalle_Factura_Precio, Detalle_Factura_SubTotal)
-SELECT DISTINCT Factura_Numero, Detalle_Factura_Cantidad, Detalle_Factura_Precio, Detalle_Factura_SubTotal
-FROM gd_esquema.Maestra
-WHERE Factura_Numero IS NOT NULL;
+INSERT INTO BDGRUPO.FacturaDetalle 
+	(Factura_Numero, Detalle_Factura_Cantidad, Detalle_Factura_Precio, Detalle_Factura_SubTotal, Detalle_Factura_Pedido_ID)
+SELECT 
+	m.Factura_Numero, 
+	m.Detalle_Factura_Cantidad, 
+	m.Detalle_Factura_Precio, 
+	m.Detalle_Factura_SubTotal, 
+	d.Detalle_Pedido_ID
+FROM gd_esquema.Maestra m
+JOIN BDGRUPO.DetallePedido d ON m.Pedido_Numero = d.Pedido_Numero
+	AND d.Detalle_Pedido_Cantidad = m.Detalle_Factura_Cantidad
+	AND d.Detalle_Pedido_Precio = m.Detalle_Factura_Precio
+	AND d.Detalle_Pedido_SubTotal = m.Detalle_Factura_SubTotal
+WHERE m.Factura_Numero IS NOT NULL ;
 
 --Envio
 INSERT INTO BDGRUPO.Envio (Envio_Numero, Factura_Numero, Envio_Fecha_Programada, Envio_Fecha, Envio_ImporteTraslado, Envio_ImporteSubida, Envio_Total)
