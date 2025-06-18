@@ -4,8 +4,17 @@ GO
 -- //////////////////////////////////////////////////////////////
 -- ELIMINACION DE TABLAS Y PROCEDIMIENTOS ANTERIORES
 -- //////////////////////////////////////////////////////////////
+
 DROP PROCEDURE IF EXISTS BDGRUPOBI.Migrar_Datos;
 
+-- Primero eliminar tablas de hechos (por FK)
+IF OBJECT_ID('BDGRUPOBI.HechoVentas', 'U') IS NOT NULL DROP TABLE BDGRUPOBI.HechoVentas;
+IF OBJECT_ID('BDGRUPOBI.HechoCompras', 'U') IS NOT NULL DROP TABLE BDGRUPOBI.HechoCompras;
+IF OBJECT_ID('BDGRUPOBI.HechoEnvios', 'U') IS NOT NULL DROP TABLE BDGRUPOBI.HechoEnvios;
+IF OBJECT_ID('BDGRUPOBI.HechoPedidos', 'U') IS NOT NULL DROP TABLE BDGRUPOBI.HechoPedidos;
+
+
+-- Luego eliminar dimensiones
 IF OBJECT_ID('BDGRUPOBI.DimTiempo', 'U') IS NOT NULL DROP TABLE BDGRUPOBI.DimTiempo;
 IF OBJECT_ID('BDGRUPOBI.DimSucursal', 'U') IS NOT NULL DROP TABLE BDGRUPOBI.DimSucursal;
 IF OBJECT_ID('BDGRUPOBI.DimMaterial', 'U') IS NOT NULL DROP TABLE BDGRUPOBI.DimMaterial;
@@ -13,8 +22,7 @@ IF OBJECT_ID('BDGRUPOBI.DimSillon', 'U') IS NOT NULL DROP TABLE BDGRUPOBI.DimSil
 IF OBJECT_ID('BDGRUPOBI.DimCliente', 'U') IS NOT NULL DROP TABLE BDGRUPOBI.DimCliente;
 IF OBJECT_ID('BDGRUPOBI.DimTurno', 'U') IS NOT NULL DROP TABLE BDGRUPOBI.DimTurno;
 IF OBJECT_ID('BDGRUPOBI.DimEstadoPedido', 'U') IS NOT NULL DROP TABLE BDGRUPOBI.DimEstadoPedido;
-IF OBJECT_ID('BDGRUPOBI.HechoVentas', 'U') IS NOT NULL DROP TABLE BDGRUPOBI.HechoVentas;
-IF OBJECT_ID('BDGRUPOBI.HechoCompras', 'U') IS NOT NULL DROP TABLE BDGRUPOBI.HechoCompras;
+
 
 GO
 
@@ -34,7 +42,8 @@ CREATE TABLE BDGRUPOBI.DimTiempo (
     Tiempo_ID INT PRIMARY KEY IDENTITY(1,1),
     Anio INT,
     Cuatrimestre INT,
-    Mes INT
+    Mes INT,
+	Fecha DATE
 );
 GO
 
@@ -99,18 +108,18 @@ GO
 
 -- HECHO_COMPRAS
 CREATE TABLE BDGRUPOBI.HechoCompras (
-    Compra_Numero DECIMAL(18,0) PRIMARY KEY,
+    Compra_Numero DECIMAL(18,0),
     Tiempo_ID INT,
     Sucursal_ID BIGINT,
     Material_ID BIGINT,
     Total DECIMAL(10,2),
+	PRIMARY KEY (Compra_Numero, Sucursal_ID, Material_ID),
     FOREIGN KEY (Tiempo_ID) REFERENCES BDGRUPOBI.DimTiempo(Tiempo_ID),
     FOREIGN KEY (Sucursal_ID) REFERENCES BDGRUPOBI.DimSucursal(Sucursal_ID),
     FOREIGN KEY (Material_ID) REFERENCES BDGRUPOBI.DimMaterial(Material_ID)
 );
 GO
 
-/*
 -- HECHO_PEDIDOS
 CREATE TABLE BDGRUPOBI.HechoPedidos (
     Pedido_Numero DECIMAL(18,0) PRIMARY KEY,
@@ -135,11 +144,12 @@ CREATE TABLE BDGRUPOBI.HechoEnvios (
     CumplidoEnFecha BIT
 );
 GO
-*/
 
+-- //////////////////////////////////////////////////////////////
 -- CARGA DE DATOS DIMENSIONES
+-- //////////////////////////////////////////////////////////////
 
--- Cliente
+-- DimCliente
 INSERT INTO BDGRUPOBI.DimCliente (Cliente_ID, RangoEtario)
 SELECT Cliente_Dni,
     CASE 
@@ -149,68 +159,82 @@ SELECT Cliente_Dni,
         ELSE '>50' END
 FROM BDGRUPO.Cliente;
 
---Tiempo
-INSERT INTO BDGRUPOBI.DimTiempo (anio, mes, cuatrimestre) 
-SELECT anio, mes,
-CASE 
-WHEN mes IN (1,2,3) THEN 1
-    WHEN mes IN (4,5,6) THEN 2
-    WHEN mes IN (7,8,9) THEN 3
-    ELSE 4
-END,
-    TO_CHAR(DATE (anio || '-' || mes || '-01'), 'Month')
-FROM generate_series(2010, 2030) AS anio,
-    generate_series(1, 12) AS mes;
+-- DimTiempo
+INSERT INTO BDGRUPOBI.DimTiempo (Anio, Mes, Cuatrimestre, Fecha)
+SELECT 
+    anios.Anio,
+    meses.Mes,
+    CASE 
+        WHEN meses.Mes BETWEEN 1 AND 3 THEN 1
+        WHEN meses.Mes BETWEEN 4 AND 6 THEN 2
+        WHEN meses.Mes BETWEEN 7 AND 9 THEN 3
+        ELSE 4
+    END AS Cuatrimestre,
+    DATEFROMPARTS(anios.Anio, meses.Mes, 1) AS Fecha
+FROM 
+    (VALUES (2010), (2011), (2012), (2013), (2014), (2015), (2016), (2017), (2018), (2019),
+            (2020), (2021), (2022), (2023), (2024), (2025), (2026), (2027), (2028), (2029), (2030)) AS anios(Anio)
+CROSS JOIN 
+    (VALUES (1), (2), (3), (4), (5), (6), (7), (8), (9), (10), (11), (12)) AS meses(Mes)
+ORDER BY anios.Anio, meses.Mes;
 
-
+-- DimSucursal
 INSERT INTO BDGRUPOBI.DimSucursal (Sucursal_ID, Provincia, Localidad)
-SELECT s.Sucursal_ID, p.Sucursal_Provincia, s.Sucursal_Localidad
+SELECT s.Sucursal_NroSucursal, l.localidad_Provincia, s.Sucursal_Localidad
 FROM BDGRUPO.Sucursal s
-JOIN BDGRUPO.Provincia p ON s.Sucursal_Provincia = p.Provincia_Nombre;
+JOIN BDGRUPO.Localidad l ON s.Sucursal_Localidad = l.Localidad_ID
 
-
+-- DimTurno
 INSERT INTO BDGRUPOBI.DimTurno(Turno_ID, Hora_Desde, Hora_Hasta, Turno) VALUES
 (1, '8:00:00', '13:59:59', '8:00 - 14:00'),
 (2, '14:00:00', '19:59:59', '14:00 - 20:00');
 
-INSERT TO BDGRUPOBI.DimEstadoPedido(Estado_ID, Estado) VALUES
+--DimEstadoPedido
+INSERT INTO BDGRUPOBI.DimEstadoPedido(Estado_ID, Estado) VALUES
 (1, 'pendiente'),
 (2, 'entregado'),
 (3, 'cancelado');
 
-
+--DimSillon
 INSERT INTO BDGRUPOBI.DimSillon(Sillon_Codigo, Modelo)
-SELECT Sillon_Codigo, Sillon_Modelo
+SELECT Sillon_Codigo, Sillon_Modelo_Codigo
 FROM BDGRUPO.Sillon;
 
+--DimMateriales
 INSERT INTO BDGRUPOBI.DimMaterial(Material_ID, Tipo)
-SELECT Material_ID, Material_TipoID
+SELECT Material_ID, Material_Tipo
 FROM BDGRUPO.Material;
 
+-- //////////////////////////////////////////////////////////////
 -- CARGA DE DATOS HECHOS
--- Ventas
-INSERT INTO BDGRUPO.BI_HechoVentas (Factura_Numero, Tiempo_ID, TiempoFabricacion Cliente_ID, Sucursal_ID, Total)
-SELECT 
-f.Factura_Numero, 
-t.Tiempo_ID,
-DATEDIFF(HOURS, p.Pedido_Fecha, f.Factura_Fecha),
-p.Pedido_Cliente, 
-f.Factura_Sucursal, 
-f.Factura_Total
+-- //////////////////////////////////////////////////////////////
+
+-- HechosVentas
+INSERT INTO BDGRUPOBI.HechoVentas (Factura_Numero, Tiempo_ID, TiempoFabricacion, Cliente_ID, Sucursal_ID, Total)
+SELECT DISTINCT
+	f.Factura_Numero, 
+	t.Tiempo_ID,
+	DATEDIFF(HOUR, p.Pedido_Fecha, f.Factura_Fecha),
+	p.Pedido_Cliente, 
+	f.Factura_Sucursal, 
+	f.Factura_Total
 FROM BDGRUPO.Factura f
 JOIN BDGRUPO.FacturaDetalle fd ON f.Factura_Numero = fd.Factura_Numero
 JOIN BDGRUPO.DetallePedido dp ON fd.Detalle_Factura_Pedido_ID = dp.Detalle_Pedido_ID
 JOIN BDGRUPO.Pedido p ON dp.Pedido_Numero = p.Pedido_Numero
-JOIN BDGRUPO.BI_DimTiempo t ON t.Fecha = f.Factura_Fecha;
+JOIN BDGRUPOBI.DimTiempo t ON f.Factura_Fecha = t.Fecha;
 
--- Compras
+-- HechosCompras
 INSERT INTO BDGRUPOBI.HechoCompras (Compra_Numero, Tiempo_ID, Sucursal_ID, Material_ID, Total)
-SELECT c.Compra_Numero, t.Tiempo_ID, c.Compra_Sucursal, c.Compra_Material, c.Compra_Total
+SELECT DISTINCT 
+	c.Compra_Numero, 
+	t.Tiempo_ID, 
+	c.Sucursal_NroSucursal, 
+	dc.Material_ID, 
+	c.Compra_Total
 FROM BDGRUPO.Compra c
-JOIN BDGRUPO.BI_DimTiempo t ON t.Fecha = c.Compra_Fecha
-JOIN BDGRUPO.BI_DimMaterial m ON m.Material_ID = c.Compra_Material
-JOIN BDGRUPO.BI_DimSucursal s ON s.Sucursal_ID = c.Compra_Sucursal;
-
+JOIN BDGRUPO.DetalleCompra dc ON c.Compra_Numero = dc.Compra_Numero
+JOIN BDGRUPOBI.DimTiempo t ON c.Compra_Fecha = t.Fecha
 
 --VISTAS
 --1 Ganancias
