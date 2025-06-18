@@ -124,12 +124,10 @@ GO
 CREATE TABLE BDGRUPOBI.HechoPedidos (
     Pedido_Numero DECIMAL(18,0) PRIMARY KEY,
     Fecha_ID INT,
-    Turno_ID INT,
     Cliente_ID BIGINT,
     Sucursal_ID BIGINT,
     Estado NVARCHAR(50),
     FOREIGN KEY (Fecha_ID) REFERENCES BDGRUPOBI.DimTiempo(Tiempo_ID),
-    FOREIGN KEY (Turno_ID) REFERENCES BDGRUPOBI.DimTurno(Turno_ID),
     FOREIGN KEY (Cliente_ID) REFERENCES BDGRUPOBI.DimCliente(Cliente_ID),
     FOREIGN KEY (Sucursal_ID) REFERENCES BDGRUPOBI.DimSucursal(Sucursal_ID)
 );
@@ -235,6 +233,40 @@ SELECT DISTINCT
 FROM BDGRUPO.Compra c
 JOIN BDGRUPO.DetalleCompra dc ON c.Compra_Numero = dc.Compra_Numero
 JOIN BDGRUPOBI.DimTiempo t ON c.Compra_Fecha = t.Fecha
+
+-- HechosPedidos
+INSERT INTO BDGRUPOBI.HechoPedidos (Pedido_Numero, Fecha_ID, Cliente_ID, Sucursal_ID, Estado)
+SELECT
+	p.Pedido_Numero,
+	dm.Tiempo_ID,
+	p.Pedido_Cliente,
+	p.Pedido_Sucursal,
+	de.Estado
+FROM BDGRUPO.Pedido p
+JOIN BDGRUPOBI.DimTiempo dm ON p.Pedido_Fecha = dm.Fecha
+JOIN BDGRUPOBI.DimEstadoPedido de ON p.Pedido_Estado = de.Estado
+
+-- HechoEnvios      //REVISAARRRRRRRRRR
+INSERT INTO BDGRUPOBI.HechoEnvios (Envio_Numero, Tiempo_ID, Cliente_Localidad, ImporteEnvio, CumplidoEnFecha)
+SELECT
+    e.Envio_Numero,
+    t.Tiempo_ID,
+    l.Localidad_Nombre, -- o e.Envio_Localidad si ya lo trae directo
+    e.Envio_Total,
+    CASE 
+        WHEN e.Envio_Fecha <= e.Envio_Fecha_Programada THEN 1
+        ELSE 0
+    END AS CumplidoEnFecha
+FROM BDGRUPO.Envio e
+JOIN BDGRUPO.Factura f ON e.Factura_Numero = f.Factura_Numero
+JOIN BDGRUPO.FacturaDetalle fd ON f.Factura_Numero = fd.Factura_Numero
+JOIN BDGRUPO.DetallePedido dp ON fd.Detalle_ID = dp.Detalle_Pedido_ID
+JOIN BDGRUPO.Pedido p ON dp.Pedido_Numero = p.Pedido_Numero
+JOIN BDGRUPO.Cliente c ON p.Pedido_Cliente = c.Cliente_Dni
+JOIN BDGRUPO.Localidad l ON c.Cliente_Localidad = l.Localidad_ID
+JOIN BDGRUPOBI.DimTiempo t ON CAST(e.Envio_Fecha AS DATE) = t.Fecha;
+
+
 
 --VISTAS
 --1 Ganancias
