@@ -270,21 +270,37 @@ JOIN BDGRUPOBI.DimTiempo t ON CAST(e.Envio_Fecha AS DATE) = t.Fecha;
 
 --VISTAS
 --1 Ganancias
+--1 Ganancias
+DROP VIEW vista_ganancias
 CREATE VIEW vista_ganancias AS
 SELECT
-ISNULL(SUM(v.Total), 0) - ISNULL(SUM(c.Total), 0) AS ganancia,
-s.Sucursal_ID,
-t.Mes,
-t.Anio
-FROM
-BDGRUPOBI.HechoVentas v 
-INNER JOIN BDGRUPOBI.DimSucursal s ON v.Sucursal_ID = s.Sucursal_ID
-INNER JOIN BDGRUPOBI.HechoCompras c ON c.Sucursal_ID = s.Sucursal_ID
-INNER JOIN BDGRUPOBI.DimTiempo t ON v.Tiempo_ID = t.Tiempo_ID AND c.Tiempo_ID = t.Tiempo_ID
-GROUP BY
-s.Sucursal_ID,
-t.Mes,
-t.Anio
+  COALESCE(v.Sucursal_ID, c.Sucursal_ID) AS Sucursal_ID,
+  COALESCE(t.Mes, tc.Mes) AS Mes,
+  COALESCE(t.Anio, tc.Anio) AS Anio,
+  ISNULL(v.total_ventas, 0) - 
+  ISNULL(c.total_compras, 0) AS ganancia
+FROM 
+	(
+	SELECT 
+	v1.Sucursal_ID,
+	v1.Tiempo_ID,
+	SUM(v1.Total) AS total_ventas
+	FROM BDGRUPOBI.HechoVentas v1
+	GROUP BY v1.Tiempo_ID, v1.Sucursal_ID
+	) v
+FULL OUTER JOIN
+	(
+	SELECT 
+	c1.Sucursal_ID,
+	c1.Tiempo_ID,
+	SUM(c1.Total) AS total_compras
+	FROM BDGRUPOBI.HechoCompras c1
+	GROUP BY c1.Tiempo_ID, c1.Sucursal_ID
+	) c
+ON v.Tiempo_ID = c.Tiempo_ID AND v.Tiempo_ID = c.Tiempo_ID
+LEFT JOIN BDGRUPOBI.DimTiempo t ON v.Tiempo_ID = t.Tiempo_ID
+LEFT JOIN BDGRUPOBI.DimTiempo tc ON c.Tiempo_ID = tc.Tiempo_ID;
+
 
 --2 Factura Promedio Mensual
 --3 Rendimiento de Modelos
