@@ -246,13 +246,13 @@ SELECT
 FROM BDGRUPO.Pedido p
 JOIN BDGRUPOBI.DimTiempo dm ON p.Pedido_Fecha = dm.Fecha
 JOIN BDGRUPOBI.DimEstadoPedido de ON p.Pedido_Estado = de.Estado
-
--- HechoEnvios      //REVISAARRRRRRRRRR
+GO
+-- HechoEnvios
 INSERT INTO BDGRUPOBI.HechoEnvios (Envio_Numero, Tiempo_ID, Cliente_Localidad, ImporteEnvio, CumplidoEnFecha)
 SELECT
-    e.Envio_Numero,
+	DISTINCT e.Envio_Numero,
     t.Tiempo_ID,
-    l.Localidad_Nombre, -- o e.Envio_Localidad si ya lo trae directo
+	c.Cliente_Localidad, 
     e.Envio_Total,
     CASE 
         WHEN e.Envio_Fecha <= e.Envio_Fecha_Programada THEN 1
@@ -261,13 +261,11 @@ SELECT
 FROM BDGRUPO.Envio e
 JOIN BDGRUPO.Factura f ON e.Factura_Numero = f.Factura_Numero
 JOIN BDGRUPO.FacturaDetalle fd ON f.Factura_Numero = fd.Factura_Numero
-JOIN BDGRUPO.DetallePedido dp ON fd.Detalle_ID = dp.Detalle_Pedido_ID
+JOIN BDGRUPO.DetallePedido dp ON fd.Detalle_Factura_Pedido_ID = dp.Detalle_Pedido_ID
 JOIN BDGRUPO.Pedido p ON dp.Pedido_Numero = p.Pedido_Numero
 JOIN BDGRUPO.Cliente c ON p.Pedido_Cliente = c.Cliente_Dni
-JOIN BDGRUPO.Localidad l ON c.Cliente_Localidad = l.Localidad_ID
-JOIN BDGRUPOBI.DimTiempo t ON CAST(e.Envio_Fecha AS DATE) = t.Fecha;
+JOIN BDGRUPOBI.DimTiempo t ON YEAR(e.Envio_Fecha) = t.Anio AND MONTH(e.Envio_Fecha) = t.Mes
 GO
-
 --VISTAS
 
 --1 Ganancias
