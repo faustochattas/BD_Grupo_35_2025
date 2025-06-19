@@ -220,7 +220,7 @@ FROM BDGRUPO.Factura f
 JOIN BDGRUPO.FacturaDetalle fd ON f.Factura_Numero = fd.Factura_Numero
 JOIN BDGRUPO.DetallePedido dp ON fd.Detalle_Factura_Pedido_ID = dp.Detalle_Pedido_ID
 JOIN BDGRUPO.Pedido p ON dp.Pedido_Numero = p.Pedido_Numero
-JOIN BDGRUPOBI.DimTiempo t ON f.Factura_Fecha = t.Fecha;
+JOIN BDGRUPOBI.DimTiempo t ON YEAR(f.Factura_Fecha) = t.Anio AND MONTH(f.Factura_Fecha) = t.Mes;
 
 -- HechosCompras
 INSERT INTO BDGRUPOBI.HechoCompras (Compra_ID, Compra_Numero, Tiempo_ID, Sucursal_ID, Material_ID, Total)
