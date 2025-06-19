@@ -266,13 +266,14 @@ JOIN BDGRUPO.Pedido p ON dp.Pedido_Numero = p.Pedido_Numero
 JOIN BDGRUPO.Cliente c ON p.Pedido_Cliente = c.Cliente_Dni
 JOIN BDGRUPO.Localidad l ON c.Cliente_Localidad = l.Localidad_ID
 JOIN BDGRUPOBI.DimTiempo t ON CAST(e.Envio_Fecha AS DATE) = t.Fecha;
-
-
+GO
 
 --VISTAS
---1 Ganancias
+
 --1 Ganancias
 DROP VIEW vista_ganancias
+GO 
+
 CREATE VIEW vista_ganancias AS
 SELECT
   COALESCE(v.Sucursal_ID, c.Sucursal_ID) AS Sucursal_ID,
@@ -301,7 +302,7 @@ FULL OUTER JOIN
 ON v.Tiempo_ID = c.Tiempo_ID AND v.Tiempo_ID = c.Tiempo_ID
 LEFT JOIN BDGRUPOBI.DimTiempo t ON v.Tiempo_ID = t.Tiempo_ID
 LEFT JOIN BDGRUPOBI.DimTiempo tc ON c.Tiempo_ID = tc.Tiempo_ID
-
+GO
 
 --2 Factura Promedio Mensual
 --3 Rendimiento de Modelos
@@ -315,19 +316,19 @@ d.Mes,
 d.Anio,
 s.Sucursal_ID
 FROM 
-HechoPedidos p
+BDGRUPOBI.HechoPedidos p
 INNER JOIN
-DimTurno t ON p.Turno_ID = t.Turno_ID
+BDGRUPOBI.DimTurno t ON p.Turno_ID = t.Turno_ID
 INNER JOIN 
-DimTiempo d ON p.Fecha_ID = d.Fecha_ID
+BDGRUPOBI.DimTiempo d ON p.Fecha_ID = d.Tiempo_ID
 INNER JOIN
-DimSucursal s ON p.Sucursal_ID = s.Sucursal_ID
+BDGRUPOBI.DimSucursal s ON p.Sucursal_ID = s.Sucursal_ID
 GROUP BY 
 t.Turno, 
 d.Mes, 
 d.Anio, 
 s.Sucursal_ID
-
+GO
 --5 Conversion de pedidos
 --6 Tiempo promedio de fabricacion
 CREATE VIEW vista_tiempo_promedio_fabricacion AS
@@ -337,26 +338,26 @@ s.Sucursal_ID,
 t.Cuatrimestre,
 t.Anio
 FROM
-HechoVentas v 
-INNER JOIN DimSucursal s ON v.Sucursal_ID = s.Sucursal_ID
-INNER JOIN DimTiempo t ON v.Tiempo_ID = t.Tiempo_ID
+BDGRUPOBI.HechoVentas v 
+INNER JOIN BDGRUPOBI.DimSucursal s ON v.Sucursal_ID = s.Sucursal_ID
+INNER JOIN BDGRUPOBI.DimTiempo t ON v.Tiempo_ID = t.Tiempo_ID
 GROUP BY
 s.Sucursal_ID,
 t.Cuatrimestre,
 t.Anio
-
+GO
 
 --7 Promedio de Compras
 CREATE VIEW vista_promedio_compras AS
 SELECT
 AVG(c.Total) AS importe_promedio_compra,
-t.Mes
+t.Mes,
 t.Anio
 FROM
-HechoCompras c
-INNER JOIN DimTiempo t ON c.Tiempo_ID = t.Tiempo_ID
+BDGRUPOBI.HechoCompras c
+INNER JOIN BDGRUPOBI.DimTiempo t ON c.Tiempo_ID = t.Tiempo_ID
 GROUP BY t.Mes, t.Anio
-
+GO
 --8 Compras por tipo de material
 CREATE VIEW vista_compras_material AS
 SELECT
@@ -366,16 +367,16 @@ s.Sucursal_ID,
 t.Cuatrimestre,
 t.Anio
 FROM
-HechoCompras c
-INNER JOIN DimMaterial m ON c.Material_ID = m.Material_ID
-INNER JOIN DimSucursal s ON c.Sucursal_ID = s.Sucursal_ID
-INNER JOIN DimTiempo t ON c.Tiempo_ID = t.Tiempo_ID
+BDGRUPOBI.HechoCompras c
+INNER JOIN BDGRUPOBI.DimMaterial m ON c.Material_ID = m.Material_ID
+INNER JOIN BDGRUPOBI.DimSucursal s ON c.Sucursal_ID = s.Sucursal_ID
+INNER JOIN BDGRUPOBI.DimTiempo t ON c.Tiempo_ID = t.Tiempo_ID
 GROUP BY 
 m.Tipo,
 s.Sucursal_ID,
 t.Cuatrimestre,
 t.Anio
-
+GO
 --9 Porcentaje de cumplimiento de envios
 CREATE VIEW vista_cumplimiento_envios AS
 SELECT 
@@ -383,8 +384,8 @@ SELECT
 t.Mes,
 t.Anio
 FROM
-HechoEnvios e
-INNER JOIN DimTiempo t ON e.Fecha_ID = t.Fecha_ID
+BDGRUPOBI.HechoEnvios e
+INNER JOIN BDGRUPOBI.DimTiempo t ON e.Tiempo_ID = t.Tiempo_ID
 GROUP BY 
 t.Mes,
 t.Anio
