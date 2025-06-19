@@ -108,12 +108,12 @@ GO
 
 -- HECHO_COMPRAS
 CREATE TABLE BDGRUPOBI.HechoCompras (
+	Compra_ID BIGINT PRIMARY KEY,
     Compra_Numero DECIMAL(18,0),
     Tiempo_ID INT,
     Sucursal_ID BIGINT,
     Material_ID BIGINT,
     Total DECIMAL(10,2),
-	PRIMARY KEY (Compra_Numero, Sucursal_ID, Material_ID),
     FOREIGN KEY (Tiempo_ID) REFERENCES BDGRUPOBI.DimTiempo(Tiempo_ID),
     FOREIGN KEY (Sucursal_ID) REFERENCES BDGRUPOBI.DimSucursal(Sucursal_ID),
     FOREIGN KEY (Material_ID) REFERENCES BDGRUPOBI.DimMaterial(Material_ID)
@@ -223,16 +223,17 @@ JOIN BDGRUPO.Pedido p ON dp.Pedido_Numero = p.Pedido_Numero
 JOIN BDGRUPOBI.DimTiempo t ON f.Factura_Fecha = t.Fecha;
 
 -- HechosCompras
-INSERT INTO BDGRUPOBI.HechoCompras (Compra_Numero, Tiempo_ID, Sucursal_ID, Material_ID, Total)
-SELECT DISTINCT 
+INSERT INTO BDGRUPOBI.HechoCompras (Compra_ID, Compra_Numero, Tiempo_ID, Sucursal_ID, Material_ID, Total)
+SELECT 
+	dc.Detalle_Compra_ID,
 	c.Compra_Numero, 
 	t.Tiempo_ID, 
 	c.Sucursal_NroSucursal, 
 	dc.Material_ID, 
-	c.Compra_Total
+	dc.Detalle_Compra_Subtotal
 FROM BDGRUPO.Compra c
 JOIN BDGRUPO.DetalleCompra dc ON c.Compra_Numero = dc.Compra_Numero
-JOIN BDGRUPOBI.DimTiempo t ON c.Compra_Fecha = t.Fecha
+JOIN BDGRUPOBI.DimTiempo t ON YEAR(c.Compra_Fecha) = t.Anio AND MONTH(c.Compra_Fecha) = t.Mes
 
 -- HechosPedidos
 INSERT INTO BDGRUPOBI.HechoPedidos (Pedido_Numero, Fecha_ID, Cliente_ID, Sucursal_ID, Estado)
@@ -299,7 +300,7 @@ FULL OUTER JOIN
 	) c
 ON v.Tiempo_ID = c.Tiempo_ID AND v.Tiempo_ID = c.Tiempo_ID
 LEFT JOIN BDGRUPOBI.DimTiempo t ON v.Tiempo_ID = t.Tiempo_ID
-LEFT JOIN BDGRUPOBI.DimTiempo tc ON c.Tiempo_ID = tc.Tiempo_ID;
+LEFT JOIN BDGRUPOBI.DimTiempo tc ON c.Tiempo_ID = tc.Tiempo_ID
 
 
 --2 Factura Promedio Mensual
