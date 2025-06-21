@@ -17,11 +17,25 @@ IF OBJECT_ID('BDGRUPOBI.HechoPedidos', 'U') IS NOT NULL DROP TABLE BDGRUPOBI.Hec
 -- Luego eliminar dimensiones
 IF OBJECT_ID('BDGRUPOBI.DimTiempo', 'U') IS NOT NULL DROP TABLE BDGRUPOBI.DimTiempo;
 IF OBJECT_ID('BDGRUPOBI.DimSucursal', 'U') IS NOT NULL DROP TABLE BDGRUPOBI.DimSucursal;
+IF OBJECT_ID('BDGRUPOBI.DimUbicacion', 'U') IS NOT NULL DROP TABLE BDGRUPOBI.DimUbicacion;
 IF OBJECT_ID('BDGRUPOBI.DimMaterial', 'U') IS NOT NULL DROP TABLE BDGRUPOBI.DimMaterial;
 IF OBJECT_ID('BDGRUPOBI.DimSillon', 'U') IS NOT NULL DROP TABLE BDGRUPOBI.DimSillon;
 IF OBJECT_ID('BDGRUPOBI.DimCliente', 'U') IS NOT NULL DROP TABLE BDGRUPOBI.DimCliente;
 IF OBJECT_ID('BDGRUPOBI.DimTurno', 'U') IS NOT NULL DROP TABLE BDGRUPOBI.DimTurno;
 IF OBJECT_ID('BDGRUPOBI.DimEstadoPedido', 'U') IS NOT NULL DROP TABLE BDGRUPOBI.DimEstadoPedido;
+
+IF OBJECT_ID('BDGRUPOBI.vista_ganancias', 'V') IS NOT NULL DROP VIEW BDGRUPOBI.vista_ganancias;
+IF OBJECT_ID('BDGRUPOBI.vista_conversion_pedidos', 'V') IS NOT NULL DROP VIEW BDGRUPOBI.vista_conversion_pedidos;
+IF OBJECT_ID('BDGRUPOBI.vista_volumen_pedidos', 'V') IS NOT NULL DROP VIEW BDGRUPOBI.vista_volumen_pedidos;
+IF OBJECT_ID('BDGRUPOBI.vista_tiempo_promedio_fabricacion', 'V') IS NOT NULL DROP VIEW BDGRUPOBI.vista_tiempo_promedio_fabricacion;
+IF OBJECT_ID('BDGRUPOBI.vista_promedio_compras', 'V') IS NOT NULL DROP VIEW BDGRUPOBI.vista_promedio_compras;
+IF OBJECT_ID('BDGRUPOBI.vista_compras_material', 'V') IS NOT NULL DROP VIEW BDGRUPOBI.vista_compras_material;
+IF OBJECT_ID('BDGRUPOBI.vista_cumplimiento_envios', 'V') IS NOT NULL DROP VIEW BDGRUPOBI.vista_cumplimiento_envios;
+IF OBJECT_ID('BDGRUPOBI.vista_localidades_mayor_costo', 'V') IS NOT NULL DROP VIEW BDGRUPOBI.vista_localidades_mayor_costo;
+IF OBJECT_ID('BDGRUPOBI.vista_rendimiento_modelos', 'V') IS NOT NULL DROP VIEW BDGRUPOBI.vista_rendimiento_modelos;
+IF OBJECT_ID('BDGRUPOBI.vista_factura_promedio_mensual', 'V') IS NOT NULL DROP VIEW BDGRUPOBI.vista_factura_promedio_mensual;
+IF OBJECT_ID('BDGRUPOBI.vista_localidades_mayor_costo', 'V') IS NOT NULL DROP VIEW BDGRUPOBI.vista_localidades_mayor_Costo;
+IF OBJECT_ID('BDGRUPOBI.vista_conversion_pedidos', 'V') IS NOT NULL DROP VIEW BDGRUPOBI.vista_conversion_pedidos;
 
 
 GO
@@ -47,11 +61,18 @@ CREATE TABLE BDGRUPOBI.DimTiempo (
 );
 GO
 
+-- DIM_UBICACION
+CREATE TABLE BDGRUPOBI.DimUbicacion (
+    Localidad_ID BIGINT PRIMARY KEY,
+    Provincia NVARCHAR(100),
+    Localidad NVARCHAR(100)
+);
+GO
+
 -- DIM_SUCURSAL
 CREATE TABLE BDGRUPOBI.DimSucursal (
     Sucursal_ID BIGINT PRIMARY KEY,
-    Provincia NVARCHAR(100),
-    Localidad NVARCHAR(100)
+    Localidad_ID BIGINT
 );
 GO
 
@@ -100,6 +121,7 @@ CREATE TABLE BDGRUPOBI.HechoVentas (
     Cliente_ID BIGINT,
     Sucursal_ID BIGINT,
     Total DECIMAL(10,2),
+    Sillon_Codigo BIGINT,
     FOREIGN KEY (Tiempo_ID) REFERENCES BDGRUPOBI.DimTiempo(Tiempo_ID),
     FOREIGN KEY (Cliente_ID) REFERENCES BDGRUPOBI.DimCliente(Cliente_ID),
     FOREIGN KEY (Sucursal_ID) REFERENCES BDGRUPOBI.DimSucursal(Sucursal_ID)
@@ -124,10 +146,12 @@ GO
 CREATE TABLE BDGRUPOBI.HechoPedidos (
     Pedido_Numero DECIMAL(18,0) PRIMARY KEY,
     Fecha_ID INT,
+    Turno_ID INT,
     Cliente_ID BIGINT,
     Sucursal_ID BIGINT,
     Estado NVARCHAR(50),
     FOREIGN KEY (Fecha_ID) REFERENCES BDGRUPOBI.DimTiempo(Tiempo_ID),
+    FOREIGN KEY (Turno_ID) REFERENCES BDGRUPOBI.DimTurno(Turno_ID),
     FOREIGN KEY (Cliente_ID) REFERENCES BDGRUPOBI.DimCliente(Cliente_ID),
     FOREIGN KEY (Sucursal_ID) REFERENCES BDGRUPOBI.DimSucursal(Sucursal_ID)
 );
@@ -137,9 +161,11 @@ GO
 CREATE TABLE BDGRUPOBI.HechoEnvios (
     Envio_Numero DECIMAL(18,0) PRIMARY KEY,
     Tiempo_ID INT,
-    Cliente_Localidad NVARCHAR(100),
+    Localidad_Cliente BIGINT,
     ImporteEnvio DECIMAL(10,2),
     CumplidoEnFecha BIT
+    
+    FOREIGN KEY (Localidad_Cliente) REFERENCES BDGRUPOBI.DimUbicacion(Localidad_ID)
 );
 GO
 
@@ -176,9 +202,17 @@ CROSS JOIN
     (VALUES (1), (2), (3), (4), (5), (6), (7), (8), (9), (10), (11), (12)) AS meses(Mes)
 ORDER BY anios.Anio, meses.Mes;
 
+
+-- DimUbicacion
+INSERT INTO BDGRUPOBI.DimUbicacion (Localidad_ID, Provincia, Localidad)
+SELECT l.Localidad_ID, l.localidad_Provincia, l.Localidad_Nombre
+FROM BDGRUPO.Localidad l;
+
 -- DimSucursal
-INSERT INTO BDGRUPOBI.DimSucursal (Sucursal_ID, Provincia, Localidad)
-SELECT s.Sucursal_NroSucursal, l.localidad_Provincia, s.Sucursal_Localidad
+INSERT INTO BDGRUPOBI.DimSucursal (Sucursal_ID, Localidad_ID)
+SELECT 
+    s.Sucursal_NroSucursal, 
+    l.Localidad_ID
 FROM BDGRUPO.Sucursal s
 JOIN BDGRUPO.Localidad l ON s.Sucursal_Localidad = l.Localidad_ID
 
@@ -208,19 +242,24 @@ FROM BDGRUPO.Material;
 -- //////////////////////////////////////////////////////////////
 
 -- HechosVentas
-INSERT INTO BDGRUPOBI.HechoVentas (Factura_Numero, Tiempo_ID, TiempoFabricacion, Cliente_ID, Sucursal_ID, Total)
-SELECT DISTINCT
-	f.Factura_Numero, 
-	t.Tiempo_ID,
-	DATEDIFF(HOUR, p.Pedido_Fecha, f.Factura_Fecha),
-	p.Pedido_Cliente, 
-	f.Factura_Sucursal, 
-	f.Factura_Total
+INSERT INTO BDGRUPOBI.HechoVentas (Factura_Numero, Tiempo_ID, TiempoFabricacion, Cliente_ID, Sucursal_ID, Total, Sillon_Codigo)
+SELECT
+    f.Factura_Numero, 
+    t.Tiempo_ID,
+    DATEDIFF(HOUR, MIN(p.Pedido_Fecha), f.Factura_Fecha),  -- Usamos el primer pedido asociado
+    p.Pedido_Cliente, 
+    f.Factura_Sucursal, 
+    f.Factura_Total,
+    MIN(s.Sillon_Codigo) AS Sillon_Codigo  -- o MAX, o usar una subconsulta con TOP 1
 FROM BDGRUPO.Factura f
 JOIN BDGRUPO.FacturaDetalle fd ON f.Factura_Numero = fd.Factura_Numero
 JOIN BDGRUPO.DetallePedido dp ON fd.Detalle_Factura_Pedido_ID = dp.Detalle_Pedido_ID
 JOIN BDGRUPO.Pedido p ON dp.Pedido_Numero = p.Pedido_Numero
-JOIN BDGRUPOBI.DimTiempo t ON YEAR(f.Factura_Fecha) = t.Anio AND MONTH(f.Factura_Fecha) = t.Mes;
+JOIN BDGRUPOBI.DimTiempo t ON YEAR(f.Factura_Fecha) = t.Anio AND MONTH(f.Factura_Fecha) = t.Mes
+JOIN BDGRUPOBI.DimSillon s ON dp.Sillon_Codigo = s.Sillon_Codigo
+GROUP BY 
+    f.Factura_Numero, t.Tiempo_ID, f.Factura_Fecha, p.Pedido_Cliente, f.Factura_Sucursal, f.Factura_Total;
+
 
 -- HechosCompras
 INSERT INTO BDGRUPOBI.HechoCompras (Compra_ID, Compra_Numero, Tiempo_ID, Sucursal_ID, Material_ID, Total)
@@ -236,19 +275,22 @@ JOIN BDGRUPO.DetalleCompra dc ON c.Compra_Numero = dc.Compra_Numero
 JOIN BDGRUPOBI.DimTiempo t ON YEAR(c.Compra_Fecha) = t.Anio AND MONTH(c.Compra_Fecha) = t.Mes
 
 -- HechosPedidos
-INSERT INTO BDGRUPOBI.HechoPedidos (Pedido_Numero, Fecha_ID, Cliente_ID, Sucursal_ID, Estado)
+INSERT INTO BDGRUPOBI.HechoPedidos (Pedido_Numero, Fecha_ID, Turno_ID, Cliente_ID, Sucursal_ID, Estado)
 SELECT
 	p.Pedido_Numero,
 	dm.Tiempo_ID,
+    dt.Turno_ID,
 	p.Pedido_Cliente,
 	p.Pedido_Sucursal,
 	de.Estado
 FROM BDGRUPO.Pedido p
-JOIN BDGRUPOBI.DimTiempo dm ON p.Pedido_Fecha = dm.Fecha
+JOIN BDGRUPOBI.DimTiempo dm ON MONTH(p.Pedido_Fecha) = dm.Mes AND YEAR(p.Pedido_Fecha) = dm.Anio
+JOIN BDGRUPOBI.DimTurno dt ON CONVERT(TIME, p.Pedido_Fecha) BETWEEN dt.Hora_Desde AND dt.Hora_Hasta
 JOIN BDGRUPOBI.DimEstadoPedido de ON p.Pedido_Estado = de.Estado
 GO
+
 -- HechoEnvios
-INSERT INTO BDGRUPOBI.HechoEnvios (Envio_Numero, Tiempo_ID, Cliente_Localidad, ImporteEnvio, CumplidoEnFecha)
+INSERT INTO BDGRUPOBI.HechoEnvios (Envio_Numero, Tiempo_ID, Localidad_Cliente, ImporteEnvio, CumplidoEnFecha)
 SELECT
 	DISTINCT e.Envio_Numero,
     t.Tiempo_ID,
@@ -266,126 +308,217 @@ JOIN BDGRUPO.Pedido p ON dp.Pedido_Numero = p.Pedido_Numero
 JOIN BDGRUPO.Cliente c ON p.Pedido_Cliente = c.Cliente_Dni
 JOIN BDGRUPOBI.DimTiempo t ON YEAR(e.Envio_Fecha) = t.Anio AND MONTH(e.Envio_Fecha) = t.Mes
 GO
---VISTAS
+
+-- //////////////////////////////////////////////////////////////
+-- VISTAS
+-- //////////////////////////////////////////////////////////////
 
 --1 Ganancias
-DROP VIEW vista_ganancias
-GO 
-
-CREATE VIEW vista_ganancias AS
-SELECT
-  COALESCE(v.Sucursal_ID, c.Sucursal_ID) AS Sucursal_ID,
-  COALESCE(t.Mes, tc.Mes) AS Mes,
-  COALESCE(t.Anio, tc.Anio) AS Anio,
-  ISNULL(v.total_ventas, 0) - 
-  ISNULL(c.total_compras, 0) AS ganancia
-FROM 
-	(
-	SELECT 
-	v1.Sucursal_ID,
-	v1.Tiempo_ID,
-	SUM(v1.Total) AS total_ventas
-	FROM BDGRUPOBI.HechoVentas v1
-	GROUP BY v1.Tiempo_ID, v1.Sucursal_ID
-	) v
-FULL OUTER JOIN
-	(
-	SELECT 
-	c1.Sucursal_ID,
-	c1.Tiempo_ID,
-	SUM(c1.Total) AS total_compras
-	FROM BDGRUPOBI.HechoCompras c1
-	GROUP BY c1.Tiempo_ID, c1.Sucursal_ID
-	) c
-ON v.Tiempo_ID = c.Tiempo_ID AND v.Tiempo_ID = c.Tiempo_ID
+/*CREATE VIEW BDGRUPOBI.vista_ganancias AS
+WITH Ventas AS (
+    SELECT Sucursal_ID, Tiempo_ID, SUM(Total) AS TotalVentas
+    FROM BDGRUPOBI.HechoVentas
+    GROUP BY Sucursal_ID, Tiempo_ID
+),
+Compras AS (
+    SELECT Sucursal_ID, Tiempo_ID, SUM(Total) AS TotalCompras
+    FROM BDGRUPOBI.HechoCompras
+    GROUP BY Sucursal_ID, Tiempo_ID
+)
+SELECT 
+    COALESCE(v.Sucursal_ID, c.Sucursal_ID) AS Sucursal_ID,
+    COALESCE(t.Anio, tc.Anio) AS Anio,
+    COALESCE(t.Mes, tc.Mes) AS Mes,
+    ISNULL(v.TotalVentas, 0) - ISNULL(c.TotalCompras, 0) AS ganancias
+FROM Ventas v
+FULL OUTER JOIN Compras c 
+    ON v.Sucursal_ID = c.Sucursal_ID AND v.Tiempo_ID = c.Tiempo_ID
 LEFT JOIN BDGRUPOBI.DimTiempo t ON v.Tiempo_ID = t.Tiempo_ID
-LEFT JOIN BDGRUPOBI.DimTiempo tc ON c.Tiempo_ID = tc.Tiempo_ID
+LEFT JOIN BDGRUPOBI.DimTiempo tc ON c.Tiempo_ID = tc.Tiempo_ID;
 GO
 
+CREATE VIEW BDGRUPOBI.vista_ganancias_simpleS AS
+SELECT
+    t.Anio,
+    t.Mes,
+    s.Sucursal_ID,
+    ISNULL(SUM(v.Total), 0) - ISNULL(SUM(c.Total), 0) AS ganancia
+FROM BDGRUPOBI.DimSucursal s
+CROSS JOIN BDGRUPOBI.DimTiempo t
+LEFT JOIN BDGRUPOBI.HechoVentas v 
+    ON v.Sucursal_ID = s.Sucursal_ID AND v.Tiempo_ID = t.Tiempo_ID
+LEFT JOIN BDGRUPOBI.HechoCompras c 
+    ON c.Sucursal_ID = s.Sucursal_ID AND c.Tiempo_ID = t.Tiempo_ID
+GROUP BY t.Anio, t.Mes, s.Sucursal_ID
+HAVING ISNULL(SUM(v.Total), 0) - ISNULL(SUM(c.Total), 0) <> 0
+GO
+
+CREATE VIEW BDGRUPOBI.vista_ganancias_simple AS
+SELECT DISTINCT
+    t.Anio,
+    t.Mes,
+    s.Sucursal_ID,
+    ISNULL(SUM(v.Total), 0) - ISNULL(SUM(c.Total), 0) AS ganancia
+FROM BDGRUPOBI.DimSucursal s 
+LEFT JOIN BDGRUPOBI.HechoVentas v ON s.Sucursal_ID = v.Sucursal_ID
+LEFT JOIN BDGRUPOBI.HechoCompras c ON s.Sucursal_ID = c.Sucursal_ID
+LEFT JOIN BDGRUPOBI.DimTiempo t ON v.Tiempo_ID = t.Tiempo_ID AND c.Tiempo_ID = t.Tiempo_ID
+GROUP BY t.Anio, t.Mes, s.Sucursal_ID
+GO
+
+CREATE VIEW BDGRUPOBI.vista_ganancias_simple AS
+SELECT
+    ISNULL(v.Sucursal_ID, c.Sucursal_ID) AS Sucursal_ID,
+    t.Anio,
+    t.Mes,
+    ISNULL(SUM(v.Total), 0) AS TotalIngresos,
+    ISNULL(SUM(c.Total), 0) AS TotalEgresos,
+    ISNULL(SUM(v.Total), 0) - ISNULL(SUM(c.Total), 0) AS Ganancias
+FROM BDGRUPOBI.DimTiempo t
+LEFT JOIN BDGRUPOBI.HechoVentas v 
+    ON v.Tiempo_ID = t.Tiempo_ID
+FULL OUTER JOIN BDGRUPOBI.HechoCompras c
+    ON c.Tiempo_ID = t.Tiempo_ID
+    AND (v.Sucursal_ID = c.Sucursal_ID OR (v.Sucursal_ID IS NULL AND c.Sucursal_ID IS NOT NULL))
+GROUP BY
+    ISNULL(v.Sucursal_ID, c.Sucursal_ID),
+    t.Anio,
+    t.Mes
+HAVING
+    ISNULL(SUM(v.Total), 0) - ISNULL(SUM(c.Total), 0) <> 0
+GO
+*/
 --2 Factura Promedio Mensual
+CREATE VIEW BDGRUPOBI.vista_factura_promedio_mensual AS
+SELECT
+    u.Provincia,
+    t.Cuatrimestre,
+    t.Anio,
+    AVG(f.Total) AS factura_promedio
+FROM
+    BDGRUPOBI.HechoVentas f
+INNER JOIN BDGRUPOBI.DimSucursal s ON f.Sucursal_ID = s.Sucursal_ID
+JOIN BDGRUPOBI.DimUbicacion u ON s.Localidad_ID = u.Localidad_ID
+INNER JOIN BDGRUPOBI.DimTiempo t ON f.Tiempo_ID = t.Tiempo_ID
+GROUP BY
+    u.Provincia, t.Cuatrimestre, t.Anio
+GO
+
 --3 Rendimiento de Modelos
+CREATE VIEW BDGRUPOBI.vista_rendimiento_modelos AS
+SELECT
+    u.Localidad,
+    c.RangoEtario,
+    t.Cuatrimestre,
+    t.Anio,
+    d.Modelo,
+    SUM(v.Total) AS total_ventas
+FROM
+    BDGRUPOBI.HechoVentas v
+    JOIN BDGRUPOBI.Dimsucursal s ON v.Sucursal_ID = s.Sucursal_ID
+    JOIN BDGRUPOBI.DimUbicacion u ON s.Localidad_ID = u.Localidad_ID
+    JOIN BDGRUPOBI.DimTiempo t ON v.Tiempo_ID = t.Tiempo_ID
+    JOIN BDGRUPOBI.DimCliente c ON v.Cliente_ID = c.Cliente_ID
+    JOIN BDGRUPOBI.DimSillon d ON v.Sillon_Codigo = d.Sillon_Codigo
+GROUP BY
+    u.Localidad, c.RangoEtario, t.Cuatrimestre, t.Anio, d.Modelo
+GO
+
 
 --4 Volumen de Pedidos
-CREATE VIEW vista_volumen_pedidos AS
+CREATE VIEW BDGRUPOBI.vista_volumen_pedidos AS
 SELECT
-COUNT(DISTINCT p.Pedido_Numero) AS cantidad_pedidos,
-t.Turno,
-d.Mes,
-d.Anio,
-s.Sucursal_ID
+    COUNT(DISTINCT p.Pedido_Numero) AS cantidad_pedidos,
+    t.Turno,
+    d.Mes,
+    d.Anio,
+    s.Sucursal_ID
 FROM 
 BDGRUPOBI.HechoPedidos p
-INNER JOIN
-BDGRUPOBI.DimTurno t ON p.Turno_ID = t.Turno_ID
-INNER JOIN 
-BDGRUPOBI.DimTiempo d ON p.Fecha_ID = d.Tiempo_ID
-INNER JOIN
-BDGRUPOBI.DimSucursal s ON p.Sucursal_ID = s.Sucursal_ID
+INNER JOIN BDGRUPOBI.DimTurno t ON p.Turno_ID = t.Turno_ID
+INNER JOIN BDGRUPOBI.DimTiempo d ON p.Fecha_ID = d.Tiempo_ID
+INNER JOIN BDGRUPOBI.DimSucursal s ON p.Sucursal_ID = s.Sucursal_ID
 GROUP BY 
-t.Turno, 
-d.Mes, 
-d.Anio, 
-s.Sucursal_ID
+    t.Turno, 
+    d.Mes, 
+    d.Anio, 
+    s.Sucursal_ID
 GO
---5 Conversion de pedidos
---6 Tiempo promedio de fabricacion
-CREATE VIEW vista_tiempo_promedio_fabricacion AS
+
+--5 Conversion de pedidos 
+CREATE VIEW BDGRUPOBI.vista_conversion_pedidos AS
 SELECT
-AVG(v.TiempoFabricacion) AS tiempo_promedio_fabricacion_horas,
-s.Sucursal_ID,
-t.Cuatrimestre,
-t.Anio
+    COUNT(*) * 100.0 / NULLIF(SUM(COUNT(*)) OVER (PARTITION BY t.Anio, t.Cuatrimestre, s.Sucursal_ID), 0) AS Porcentaje_Conversion,
+    e.Estado,
+    t.Anio,
+    t.Cuatrimestre,
+    s.Sucursal_ID
+FROM BDGRUPOBI.HechoPedidos hp
+INNER JOIN BDGRUPOBI.DimEstadoPedido e ON hp.Estado = e.Estado
+INNER JOIN BDGRUPOBI.DimTiempo t ON hp.Fecha_ID = t.Tiempo_ID
+INNER JOIN BDGRUPOBI.DimSucursal s ON hp.Sucursal_ID = s.Sucursal_ID
+GROUP BY e.Estado, t.Anio, t.Cuatrimestre, s.Sucursal_ID;
+GO
+
+--6 Tiempo promedio de fabricacion
+CREATE VIEW BDGRUPOBI.vista_tiempo_promedio_fabricacion AS
+SELECT
+    AVG(v.TiempoFabricacion) AS tiempo_promedio_fabricacion_horas,
+    s.Sucursal_ID,
+    t.Cuatrimestre,
+    t.Anio
 FROM
 BDGRUPOBI.HechoVentas v 
 INNER JOIN BDGRUPOBI.DimSucursal s ON v.Sucursal_ID = s.Sucursal_ID
 INNER JOIN BDGRUPOBI.DimTiempo t ON v.Tiempo_ID = t.Tiempo_ID
-GROUP BY
-s.Sucursal_ID,
-t.Cuatrimestre,
-t.Anio
+GROUP BY s.Sucursal_ID, t.Cuatrimestre, t.Anio
 GO
 
 --7 Promedio de Compras
-CREATE VIEW vista_promedio_compras AS
+CREATE VIEW BDGRUPOBI.vista_promedio_compras AS
 SELECT
-AVG(c.Total) AS importe_promedio_compra,
-t.Mes,
-t.Anio
+    AVG(c.Total) AS importe_promedio_compra,
+    t.Mes,
+    t.Anio
 FROM
 BDGRUPOBI.HechoCompras c
 INNER JOIN BDGRUPOBI.DimTiempo t ON c.Tiempo_ID = t.Tiempo_ID
 GROUP BY t.Mes, t.Anio
 GO
 --8 Compras por tipo de material
-CREATE VIEW vista_compras_material AS
+CREATE VIEW BDGRUPOBI.vista_compras_material AS
 SELECT
-m.Tipo,
-SUM(c.Total) AS importe_total,
-s.Sucursal_ID,
-t.Cuatrimestre,
-t.Anio
+    m.Tipo,
+    SUM(c.Total) AS importe_total,
+    s.Sucursal_ID,
+    t.Cuatrimestre,
+    t.Anio
 FROM
 BDGRUPOBI.HechoCompras c
 INNER JOIN BDGRUPOBI.DimMaterial m ON c.Material_ID = m.Material_ID
 INNER JOIN BDGRUPOBI.DimSucursal s ON c.Sucursal_ID = s.Sucursal_ID
 INNER JOIN BDGRUPOBI.DimTiempo t ON c.Tiempo_ID = t.Tiempo_ID
-GROUP BY 
-m.Tipo,
-s.Sucursal_ID,
-t.Cuatrimestre,
-t.Anio
+GROUP BY m.Tipo, s.Sucursal_ID, t.Cuatrimestre, t.Anio
 GO
+
 --9 Porcentaje de cumplimiento de envios
-CREATE VIEW vista_cumplimiento_envios AS
+CREATE VIEW BDGRUPOBI.vista_cumplimiento_envios AS
 SELECT 
-((COUNT(CASE WHEN e.CumplidoEnFecha = 1 THEN 1 END) * 100.0) / COUNT(DISTINCT e.Envio_Numero)) AS porcentaje_cumplimiento,
-t.Mes,
-t.Anio
+    ((COUNT(CASE WHEN e.CumplidoEnFecha = 1 THEN 1 END) * 100.0) / COUNT(DISTINCT e.Envio_Numero)) AS porcentaje_cumplimiento,
+    t.Mes,
+    t.Anio
 FROM
 BDGRUPOBI.HechoEnvios e
 INNER JOIN BDGRUPOBI.DimTiempo t ON e.Tiempo_ID = t.Tiempo_ID
-GROUP BY 
-t.Mes,
-t.Anio
+GROUP BY t.Mes, t.Anio
+GO
 
 --10 Localidades que pagan mayor costo de envio
+CREATE VIEW BDGRUPOBI.vista_localidades_mayor_costo AS
+SELECT TOP 3
+u.Localidad,
+u.Provincia,
+ROW_NUMBER() OVER (ORDER BY he.ImporteEnvio DESC) AS puesto
+FROM BDGRUPOBI.HechoEnvios he 
+INNER JOIN BDGRUPOBI.DimUbicacion u ON u.Localidad_ID = he.Localidad_Cliente
+GO

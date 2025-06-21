@@ -68,6 +68,7 @@ CREATE TABLE BDGRUPO.Cliente (
     FOREIGN KEY (Cliente_Localidad) REFERENCES BDGRUPO.Localidad(Localidad_ID)
 );
 GO
+
 -- SUCURSAL
 CREATE TABLE BDGRUPO.Sucursal (
     Sucursal_NroSucursal BIGINT PRIMARY KEY,
@@ -190,7 +191,7 @@ CREATE TABLE BDGRUPO.Pedido (
     Pedido_Cliente BIGINT,
     Pedido_Sucursal BIGINT,
     Pedido_Estado NVARCHAR(50),
-    Pedido_Fecha DATE,
+    Pedido_Fecha DATETIME2(6),
     Pedido_Total DECIMAL(10, 2),
     FOREIGN KEY (Pedido_Cliente) REFERENCES BDGRUPO.Cliente(Cliente_Dni),
     FOREIGN KEY (Pedido_Sucursal) REFERENCES BDGRUPO.Sucursal(Sucursal_NroSucursal)
