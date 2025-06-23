@@ -230,6 +230,7 @@ CREATE TABLE BDGRUPO.Factura (
     FOREIGN KEY (Factura_Sucursal) REFERENCES BDGRUPO.Sucursal(Sucursal_NroSucursal)
 );
 GO
+
 -- FACTURA DETALLE
 CREATE TABLE BDGRUPO.FacturaDetalle (
     Detalle_ID BIGINT PRIMARY KEY IDENTITY(1,1),
@@ -238,6 +239,8 @@ CREATE TABLE BDGRUPO.FacturaDetalle (
     Detalle_Factura_Cantidad BIGINT,
     Detalle_Factura_Precio DECIMAL(10, 2),
     Detalle_Factura_SubTotal DECIMAL(10, 2),
+    Sillon_Codigo BIGINT,
+    FOREIGN KEY (Sillon_Codigo) REFERENCES BDGRUPO.Sillon(Sillon_Codigo),
     FOREIGN KEY (Factura_Numero) REFERENCES BDGRUPO.Factura(Factura_Numero),
     FOREIGN KEY (Detalle_Factura_Pedido_ID) REFERENCES BDGRUPO.DetallePedido(Detalle_Pedido_ID)
 );
@@ -412,19 +415,25 @@ WHERE Factura_Numero IS NOT NULL;
 
 --Detalle Factura
 INSERT INTO BDGRUPO.FacturaDetalle 
-	(Factura_Numero, Detalle_Factura_Cantidad, Detalle_Factura_Precio, Detalle_Factura_SubTotal, Detalle_Factura_Pedido_ID)
-SELECT 
+	(Factura_Numero, Detalle_Factura_Cantidad, Detalle_Factura_Precio, Detalle_Factura_SubTotal, Detalle_Factura_Pedido_ID, Sillon_Codigo)
+SELECT DISTINCT
 	m.Factura_Numero, 
 	m.Detalle_Factura_Cantidad, 
 	m.Detalle_Factura_Precio, 
 	m.Detalle_Factura_SubTotal, 
-	d.Detalle_Pedido_ID
+	d.Detalle_Pedido_ID,
+    d.Sillon_Codigo
 FROM gd_esquema.Maestra m
+JOIN BDGRUPO.Factura f ON m.Factura_Numero = f.Factura_Numero AND m.Sucursal_NroSucursal = f.Factura_Sucursal
 JOIN BDGRUPO.DetallePedido d ON m.Pedido_Numero = d.Pedido_Numero
 	AND d.Detalle_Pedido_Cantidad = m.Detalle_Factura_Cantidad
 	AND d.Detalle_Pedido_Precio = m.Detalle_Factura_Precio
 	AND d.Detalle_Pedido_SubTotal = m.Detalle_Factura_SubTotal
-WHERE m.Factura_Numero IS NOT NULL ;
+WHERE m.Factura_Numero IS NOT NULL  
+    AND d.Sillon_Codigo IS NOT NULL
+    AND m.Detalle_Factura_Cantidad IS NOT NULL
+    AND m.Detalle_Factura_Precio IS NOT NULL
+    AND m.Detalle_Factura_SubTotal IS NOT NULL;
 
 --Envio
 INSERT INTO BDGRUPO.Envio (Envio_Numero, Factura_Numero, Envio_Fecha_Programada, Envio_Fecha, Envio_ImporteTraslado, Envio_ImporteSubida, Envio_Total)
