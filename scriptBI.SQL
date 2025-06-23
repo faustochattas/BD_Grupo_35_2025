@@ -131,6 +131,7 @@ GO
 
 -- HECHO_COMPRAS
 CREATE TABLE BDGRUPOBI.HechoCompras (
+	Compra_ID BIGINT NOT NULL,
     Compra_Numero DECIMAL(18,0) NOT NULL,
     Tiempo_ID INT,
     Sucursal_ID BIGINT NOT NULL,
@@ -139,7 +140,7 @@ CREATE TABLE BDGRUPOBI.HechoCompras (
     FOREIGN KEY (Tiempo_ID) REFERENCES BDGRUPOBI.DimTiempo(Tiempo_ID),
     FOREIGN KEY (Sucursal_ID) REFERENCES BDGRUPOBI.DimSucursal(Sucursal_ID),
     FOREIGN KEY (Material_ID) REFERENCES BDGRUPOBI.DimMaterial(Material_ID),
-    CONSTRAINT PK_HechoCompras PRIMARY KEY (Compra_Numero, Material_ID, Sucursal_ID)
+    CONSTRAINT PK_HechoCompras PRIMARY KEY (Compra_ID, Compra_Numero, Material_ID, Sucursal_ID)
 );
 GO
 
@@ -252,7 +253,7 @@ SELECT
     p.Pedido_Cliente,
     f.Factura_Sucursal,
     dp.Sillon_Codigo,
-    f.total
+    f.Factura_Total
 FROM BDGRUPO.Factura f
 JOIN BDGRUPO.FacturaDetalle fd ON f.Factura_Numero = fd.Factura_Numero
 JOIN BDGRUPO.DetallePedido dp ON fd.Detalle_Factura_Pedido_ID = dp.Detalle_Pedido_ID
@@ -261,13 +262,14 @@ JOIN BDGRUPOBI.DimTiempo t ON YEAR(f.Factura_Fecha) = t.Anio AND MONTH(f.Factura
 GO
 
 -- HechosCompras
-INSERT INTO BDGRUPOBI.HechoCompras (Compra_Numero,Tiempo_ID, Sucursal_ID, Material_ID, Total)
+INSERT INTO BDGRUPOBI.HechoCompras (Compra_ID, Compra_Numero,Tiempo_ID, Sucursal_ID, Material_ID, Total)
 SELECT 
+	dc.Detalle_Compra_ID,
     c.Compra_Numero,
 	t.Tiempo_ID, 
 	c.Sucursal_NroSucursal, 
 	dc.Material_ID, 
-	C.total
+	dc.Detalle_Compra_Subtotal
 FROM BDGRUPO.Compra c
 JOIN BDGRUPOBI.DimTiempo t ON YEAR(c.Compra_Fecha) = t.Anio AND MONTH(c.Compra_Fecha) = t.Mes
 JOIN BDGRUPO.DetalleCompra dc ON c.Compra_Numero = dc.Compra_Numero
@@ -327,7 +329,6 @@ INNER JOIN BDGRUPOBI.HechoCompras c ON v.Sucursal_ID = c.Sucursal_ID AND v.Tiemp
 GROUP BY
     v.sucursal_id, t.Mes, t.Anio
 GO
-
 
 --2 Factura Promedio Mensual
 CREATE VIEW BDGRUPOBI.vista_factura_promedio_mensual AS
@@ -466,5 +467,4 @@ FROM BDGRUPOBI.HechoEnvios he
 INNER JOIN BDGRUPOBI.DimUbicacion u ON u.Localidad_ID = he.Localidad_Cliente
 GO
 
-Select * from BDGRUPOBI.vista_ganancias
-go
+
