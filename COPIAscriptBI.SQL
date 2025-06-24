@@ -373,13 +373,11 @@ SELECT
     t.Cuatrimestre,
     t.Anio,
     AVG(f.Total) AS Promedio_Factura
-FROM
-    BDGRUPOBI.HechoVentas f
+FROM BDGRUPOBI.HechoVentas v
 JOIN BDGRUPOBI.DimSucursal s ON f.Sucursal_ID = s.Sucursal_ID
 JOIN BDGRUPOBI.DimUbicacion u ON s.Localidad_ID = u.Localidad_ID
 JOIN BDGRUPOBI.DimTiempo t ON f.Tiempo_ID = t.Tiempo_ID
-GROUP BY
-    u.Provincia, t.Cuatrimestre, t.Anio
+GROUP BY u.Provincia, t.Cuatrimestre, t.Anio
 GO
 
 --3 Rendimiento de Modelos
@@ -391,50 +389,43 @@ SELECT
     t.Anio,
     d.Modelo,
     SUM(v.Total) AS total_ventas
-FROM
-    BDGRUPOBI.HechoVentas v
-    JOIN BDGRUPOBI.Dimsucursal s ON v.Sucursal_ID = s.Sucursal_ID
-    JOIN BDGRUPOBI.DimUbicacion u ON s.Localidad_ID = u.Localidad_ID
-    JOIN BDGRUPOBI.DimTiempo t ON v.Tiempo_ID = t.Tiempo_ID
-    JOIN BDGRUPOBI.DimCliente c ON v.Cliente_ID = c.Cliente_ID
-    JOIN BDGRUPOBI.DimSillon d ON v.Sillon_Codigo = d.Sillon_Codigo
-GROUP BY
-    u.Localidad, c.RangoEtario, t.Cuatrimestre, t.Anio, d.Modelo
+FROM BDGRUPOBI.HechoVentas v
+JOIN BDGRUPOBI.Dimsucursal s ON v.Sucursal_ID = s.Sucursal_ID
+JOIN BDGRUPOBI.DimUbicacion u ON s.Localidad_ID = u.Localidad_ID
+JOIN BDGRUPOBI.DimTiempo t ON v.Tiempo_ID = t.Tiempo_ID
+JOIN BDGRUPOBI.DimRangoEtario re ON v.RangoEtario = re.RangoEtario
+ JOIN BDGRUPOBI.DimSillon d ON v.Sillon_Modelo = d.Modelo
+GROUP BY u.Localidad, re.RangoEtario, t.Cuatrimestre, t.Anio, d.Modelo
 GO
 
 
 --4 Volumen de Pedidos
 CREATE VIEW BDGRUPOBI.vista_volumen_pedidos AS
 SELECT
-    COUNT(DISTINCT p.Pedido_Numero) AS cantidad_pedidos,
+    p.Cantidad,
     t.Turno,
     d.Mes,
     d.Anio,
     s.Sucursal_ID
-FROM 
-BDGRUPOBI.HechoPedidos p
+FROM BDGRUPOBI.HechoPedidos p
 INNER JOIN BDGRUPOBI.DimTurno t ON p.Turno_ID = t.Turno_ID
 INNER JOIN BDGRUPOBI.DimTiempo d ON p.Fecha_ID = d.Tiempo_ID
 INNER JOIN BDGRUPOBI.DimSucursal s ON p.Sucursal_ID = s.Sucursal_ID
-GROUP BY 
-    t.Turno, 
-    d.Mes, 
-    d.Anio, 
-    s.Sucursal_ID
+GROUP BY t.Turno, d.Mes, d.Anio, s.Sucursal_ID
 GO
 
 --5 Conversion de pedidos 
 CREATE VIEW BDGRUPOBI.vista_conversion_pedidos AS
 SELECT
-    COUNT(*) * 100.0 / NULLIF(SUM(COUNT(*)) OVER (PARTITION BY t.Anio, t.Cuatrimestre, s.Sucursal_ID), 0) AS Porcentaje_Conversion,
+    (p.Cantidad * 100) / (SELECT SUM(p2.Cantidad) FROM BDGRUPOBI.HechoPedidos p2 WHERE p2.Tiempo_ID = t.Tiempo_ID AND p2.Sucursal_ID = s.Sucursal_ID) AS Porcentaje_Conversion
     e.Estado,
     t.Anio,
     t.Cuatrimestre,
     s.Sucursal_ID
-FROM BDGRUPOBI.HechoPedidos hp
-INNER JOIN BDGRUPOBI.DimEstadoPedido e ON hp.Estado = e.Estado
-INNER JOIN BDGRUPOBI.DimTiempo t ON hp.Fecha_ID = t.Tiempo_ID
-INNER JOIN BDGRUPOBI.DimSucursal s ON hp.Sucursal_ID = s.Sucursal_ID
+FROM BDGRUPOBI.HechoPedidos p
+INNER JOIN BDGRUPOBI.DimEstadoPedido e ON p.Estado = e.Estado
+INNER JOIN BDGRUPOBI.DimTiempo t ON p.Tiempo_ID = t.Tiempo_ID
+INNER JOIN BDGRUPOBI.DimSucursal s ON p.Sucursal_ID = s.Sucursal_ID
 GROUP BY e.Estado, t.Anio, t.Cuatrimestre, s.Sucursal_ID;
 GO
 
