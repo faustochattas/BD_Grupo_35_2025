@@ -263,17 +263,18 @@ GROUP BY t.Tiempo_ID, f.Factura_Sucursal, re.RangoEtario, s.Modelo
 GO
 
 -- HechosCompras
-INSERT INTO BDGRUPOBI.HechoCompras (Compra_ID, Compra_Numero,Tiempo_ID, Sucursal_ID, Material_ID, Total)
+INSERT INTO BDGRUPOBI.HechoCompras (Tiempo_ID, Sucursal_ID, Material_ID, Total)
 SELECT 
-	dc.Detalle_Compra_ID,
-    c.Compra_Numero,
 	t.Tiempo_ID, 
-	c.Sucursal_NroSucursal, 
-	dc.Material_ID, 
-	dc.Detalle_Compra_Subtotal
+	s.Sucursal_ID, 
+	m.Material_ID, 
+	SUM(dc.Detalle_Compra_Subtotal)
 FROM BDGRUPO.Compra c
 JOIN BDGRUPOBI.DimTiempo t ON YEAR(c.Compra_Fecha) = t.Anio AND MONTH(c.Compra_Fecha) = t.Mes
+JOIN BDGRUPOBI.DimSucursal s ON s.Sucursal_ID = c.Sucursal_NroSucursal 
 JOIN BDGRUPO.DetalleCompra dc ON c.Compra_Numero = dc.Compra_Numero
+JOIN BDGRUPOBI.DimMaterial m ON m.Material_ID = dc.Material_ID
+GROUP BY t.Tiempo_ID, s.Sucursal_ID, m.Material_ID
 GO
 
 -- HechosPedidos
