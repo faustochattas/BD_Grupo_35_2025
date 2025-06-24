@@ -20,7 +20,7 @@ IF OBJECT_ID('BDGRUPOBI.DimSucursal', 'U') IS NOT NULL DROP TABLE BDGRUPOBI.DimS
 IF OBJECT_ID('BDGRUPOBI.DimUbicacion', 'U') IS NOT NULL DROP TABLE BDGRUPOBI.DimUbicacion;
 IF OBJECT_ID('BDGRUPOBI.DimMaterial', 'U') IS NOT NULL DROP TABLE BDGRUPOBI.DimMaterial;
 IF OBJECT_ID('BDGRUPOBI.DimSillon', 'U') IS NOT NULL DROP TABLE BDGRUPOBI.DimSillon;
-IF OBJECT_ID('BDGRUPOBI.DimCliente', 'U') IS NOT NULL DROP TABLE BDGRUPOBI.DimCliente;
+IF OBJECT_ID('BDGRUPOBI.DimRangoEtario', 'U') IS NOT NULL DROP TABLE BDGRUPOBI.DimRangoEtario;
 IF OBJECT_ID('BDGRUPOBI.DimTurno', 'U') IS NOT NULL DROP TABLE BDGRUPOBI.DimTurno;
 IF OBJECT_ID('BDGRUPOBI.DimEstadoPedido', 'U') IS NOT NULL DROP TABLE BDGRUPOBI.DimEstadoPedido;
 
@@ -122,10 +122,10 @@ CREATE TABLE BDGRUPOBI.HechoVentas (
     Total DECIMAL(10,2),
     TiempoFabricacion INT,
     FOREIGN KEY (Tiempo_ID) REFERENCES BDGRUPOBI.DimTiempo(Tiempo_ID),
-    FOREIGN KEY (Cliente_ID) REFERENCES BDGRUPOBI.DimCliente(Cliente_ID),
+    FOREIGN KEY (RangoEtario) REFERENCES BDGRUPOBI.DimRangoEtario(RangoEtario),
     FOREIGN KEY (Sucursal_ID) REFERENCES BDGRUPOBI.DimSucursal(Sucursal_ID),
     FOREIGN KEY (Sillon_Modelo) REFERENCES BDGRUPOBI.DimSillon(Modelo),
-    CONSTRAINT PK_HechoVentas PRIMARY KEY (Tiempo_ID, Sucursal_ID, RangoEtario, Sillon_Codigo)
+    CONSTRAINT PK_HechoVentas PRIMARY KEY (Tiempo_ID, Sucursal_ID, RangoEtario, Sillon_Modelo)
 );
 GO
 
@@ -150,11 +150,11 @@ CREATE TABLE BDGRUPOBI.HechoPedidos (
     Sucursal_ID BIGINT,
     Cantidad INT,
     Estado NVARCHAR(50),
-    FOREIGN KEY (Fecha_ID) REFERENCES BDGRUPOBI.DimTiempo(Tiempo_ID),
+	Porcentaje_conversion INT,
+    FOREIGN KEY (Tiempo_ID) REFERENCES BDGRUPOBI.DimTiempo(Tiempo_ID),
     FOREIGN KEY (Turno_ID) REFERENCES BDGRUPOBI.DimTurno(Turno_ID),
-    FOREIGN KEY (Cliente_ID) REFERENCES BDGRUPOBI.DimCliente(Cliente_ID),
-    FOREIGN KEY (Sucursal_ID) REFERENCES BDGRUPOBI.DimSucursal(Sucursal_ID)
-    CONSTRAINT PK_HechoPedidos PRIMARY KEY (Tiempo_ID, Turno_ID, Sucursal_ID)
+    FOREIGN KEY (Sucursal_ID) REFERENCES BDGRUPOBI.DimSucursal(Sucursal_ID),
+    CONSTRAINT PK_HechoPedidos PRIMARY KEY (Tiempo_ID, Turno_ID, Sucursal_ID, Estado)
 );
 GO
 
@@ -162,13 +162,13 @@ GO
 CREATE TABLE BDGRUPOBI.HechoEnvios (
     Tiempo_ID INT,
     Localidad_Cliente BIGINT,
-    ImporteEnvio DECIMAL(10,2),
-    CumplidoEnFecha BIT,
+	Porcentaje_cumplidos DECIMAL(18,0),
+	Costo_promedio DECIMAL(18,2),
     
     FOREIGN KEY (Tiempo_ID) REFERENCES BDGRUPOBI.DimTiempo(Tiempo_ID),
     FOREIGN KEY (Localidad_Cliente) REFERENCES BDGRUPOBI.DimUbicacion(Localidad_ID),
-    CONSTRAINT PK_HechoPedidos PRIMARY KEY (Tiempo_ID, Turno_ID, Sucursal_ID)
-);
+    CONSTRAINT PK_HechoEnvios PRIMARY KEY (Tiempo_ID, Localidad_Cliente)
+)
 GO
 
 -- //////////////////////////////////////////////////////////////
@@ -176,22 +176,21 @@ GO
 -- //////////////////////////////////////////////////////////////
 
 -- DimRangoEtario
-INSERT INTO BDGRUPOBI.DimCliente (RangoEtario, Edad_desde, Edad_hasta) VALUES
+INSERT INTO BDGRUPOBI.DimRangoEtario(RangoEtario, Edad_desde, Edad_hasta) VALUES
 ('<25', 0, 24),
 ('25-35', 25, 34),
 ('35-50', 35, 49),
-('>50', 50, 100)
- END
+('>50', 50, 100);
+
 -- DimTiempo
 INSERT INTO BDGRUPOBI.DimTiempo (Anio, Mes, Cuatrimestre, Fecha)
 SELECT 
     anios.Anio,
     meses.Mes,
     CASE 
-        WHEN meses.Mes BETWEEN 1 AND 3 THEN 1
-        WHEN meses.Mes BETWEEN 4 AND 6 THEN 2
-        WHEN meses.Mes BETWEEN 7 AND 9 THEN 3
-        ELSE 4
+        WHEN meses.Mes BETWEEN 1 AND 4 THEN 1
+        WHEN meses.Mes BETWEEN 5 AND 8 THEN 2
+        WHEN meses.Mes BETWEEN 9 AND 12 THEN 3
     END AS Cuatrimestre,
     DATEFROMPARTS(anios.Anio, meses.Mes, 1) AS Fecha
 FROM 
@@ -200,7 +199,6 @@ FROM
 CROSS JOIN 
     (VALUES (1), (2), (3), (4), (5), (6), (7), (8), (9), (10), (11), (12)) AS meses(Mes)
 ORDER BY anios.Anio, meses.Mes;
-
 
 -- DimUbicacion
 INSERT INTO BDGRUPOBI.DimUbicacion (Localidad_ID, Provincia, Localidad)
@@ -240,7 +238,6 @@ FROM BDGRUPO.Material;
 -- CARGA DE DATOS HECHOS
 -- //////////////////////////////////////////////////////////////
 
--- HechosVentas
 -- HechosVentas
 INSERT INTO BDGRUPOBI.HechoVentas (Tiempo_ID, Sucursal_ID, RangoEtario, Sillon_Modelo, Total, TiempoFabricacion)
 SELECT
@@ -282,26 +279,27 @@ INSERT INTO BDGRUPOBI.HechoPedidos (Tiempo_ID, Turno_ID, Sucursal_ID, Cantidad, 
 SELECT
 	t.Tiempo_ID,
     dt.Turno_ID,
-	p.Pedido_Cliente,
 	p.Pedido_Sucursal,
-    COUNT(DISTINCT p.Pedido_Numero),
-	de.Estado
+    COUNT(p.Pedido_Numero),
+	de.Estado,
+	COUNT(p.Pedido_Numero) * 100 / (SELECT COUNT(*) FROM BDGRUPO.Pedido p2 WHERE p2.)
 FROM BDGRUPO.Pedido p
 JOIN BDGRUPOBI.DimTiempo t ON MONTH(p.Pedido_Fecha) = t.Mes AND YEAR(p.Pedido_Fecha) = t.Anio
 JOIN BDGRUPOBI.DimTurno dt ON CONVERT(TIME, p.Pedido_Fecha) BETWEEN dt.Hora_Desde AND dt.Hora_Hasta
 JOIN BDGRUPOBI.DimEstadoPedido de ON p.Pedido_Estado = de.Estado
+GROUP BY t.Tiempo_ID, dt.Turno_ID, p.Pedido_Sucursal, de.Estado
 GO
 
 -- HechoEnvios
-INSERT INTO BDGRUPOBI.HechoEnvios (Tiempo_ID, Localidad_Cliente, ImporteEnvio, CumplidoEnFecha)
-SELECT
+INSERT INTO BDGRUPOBI.HechoEnvios (Tiempo_ID, Localidad_Cliente, Porcentaje_cumplidos, Costo_promedio)
+SELECT 
     t.Tiempo_ID,
 	c.Cliente_Localidad, 
-    e.Envio_Total,
-    CASE 
-        WHEN e.Envio_Fecha <= e.Envio_Fecha_Programada THEN 1
-        ELSE 0
-    END AS CumplidoEnFecha
+     CAST(
+        100.0 * SUM(CASE WHEN e.Envio_Fecha <= e.Envio_Fecha_Programada THEN 1 ELSE 0 END) 
+        / COUNT(e.Envio_Numero) AS DECIMAL(18,0)
+    ) AS Porcentaje_cumplidos,
+    AVG(e.Envio_Total)
 FROM BDGRUPO.Envio e
 JOIN BDGRUPO.Factura f ON e.Factura_Numero = f.Factura_Numero
 JOIN BDGRUPO.FacturaDetalle fd ON f.Factura_Numero = fd.Factura_Numero
@@ -309,6 +307,7 @@ JOIN BDGRUPO.DetallePedido dp ON fd.Detalle_Factura_Pedido_ID = dp.Detalle_Pedid
 JOIN BDGRUPO.Pedido p ON dp.Pedido_Numero = p.Pedido_Numero
 JOIN BDGRUPO.Cliente c ON p.Pedido_Cliente = c.Cliente_Dni
 JOIN BDGRUPOBI.DimTiempo t ON YEAR(e.Envio_Fecha) = t.Anio AND MONTH(e.Envio_Fecha) = t.Mes
+GROUP BY t.Tiempo_ID, c.Cliente_Localidad
 GO
 
 -- //////////////////////////////////////////////////////////////
@@ -372,11 +371,11 @@ SELECT
     u.Provincia,
     t.Cuatrimestre,
     t.Anio,
-    AVG(f.Total) AS Promedio_Factura
+    AVG(v.Total) AS Promedio_Factura
 FROM BDGRUPOBI.HechoVentas v
-JOIN BDGRUPOBI.DimSucursal s ON f.Sucursal_ID = s.Sucursal_ID
+JOIN BDGRUPOBI.DimSucursal s ON v.Sucursal_ID = s.Sucursal_ID
 JOIN BDGRUPOBI.DimUbicacion u ON s.Localidad_ID = u.Localidad_ID
-JOIN BDGRUPOBI.DimTiempo t ON f.Tiempo_ID = t.Tiempo_ID
+JOIN BDGRUPOBI.DimTiempo t ON v.Tiempo_ID = t.Tiempo_ID
 GROUP BY u.Provincia, t.Cuatrimestre, t.Anio
 GO
 
@@ -384,7 +383,7 @@ GO
 CREATE VIEW BDGRUPOBI.vista_rendimiento_modelos AS
 SELECT
     u.Localidad,
-    c.RangoEtario,
+    re.RangoEtario,
     t.Cuatrimestre,
     t.Anio,
     d.Modelo,
@@ -402,14 +401,14 @@ GO
 --4 Volumen de Pedidos
 CREATE VIEW BDGRUPOBI.vista_volumen_pedidos AS
 SELECT
-    p.Cantidad,
+    SUM(p.Cantidad) as volumen,
     t.Turno,
     d.Mes,
     d.Anio,
     s.Sucursal_ID
 FROM BDGRUPOBI.HechoPedidos p
 INNER JOIN BDGRUPOBI.DimTurno t ON p.Turno_ID = t.Turno_ID
-INNER JOIN BDGRUPOBI.DimTiempo d ON p.Fecha_ID = d.Tiempo_ID
+INNER JOIN BDGRUPOBI.DimTiempo d ON p.Tiempo_ID = d.Tiempo_ID
 INNER JOIN BDGRUPOBI.DimSucursal s ON p.Sucursal_ID = s.Sucursal_ID
 GROUP BY t.Turno, d.Mes, d.Anio, s.Sucursal_ID
 GO
@@ -417,7 +416,7 @@ GO
 --5 Conversion de pedidos 
 CREATE VIEW BDGRUPOBI.vista_conversion_pedidos AS
 SELECT
-    (p.Cantidad * 100) / (SELECT SUM(p2.Cantidad) FROM BDGRUPOBI.HechoPedidos p2 WHERE p2.Tiempo_ID = t.Tiempo_ID AND p2.Sucursal_ID = s.Sucursal_ID) AS Porcentaje_Conversion
+    (p.Cantidad * 100) / (SELECT SUM(p2.Cantidad) FROM BDGRUPOBI.HechoPedidos p2 WHERE p2.Tiempo_ID = t.Tiempo_ID AND p2.Sucursal_ID = s.Sucursal_ID GROUP BY p2.Tiempo_ID, p2.Sucursal_ID) AS Porcentaje_Conversion,
     e.Estado,
     t.Anio,
     t.Cuatrimestre,
@@ -474,7 +473,7 @@ GO
 --9 Porcentaje de cumplimiento de envios
 CREATE VIEW BDGRUPOBI.vista_cumplimiento_envios AS
 SELECT 
-    ((COUNT(CASE WHEN e.CumplidoEnFecha = 1 THEN 1 END) * 100.0) / COUNT(DISTINCT e.Envio_Numero)) AS porcentaje_cumplimiento,
+    AVG(e.Porcentaje_cumplidos) AS Cumplimiento,
     t.Mes,
     t.Anio
 FROM
@@ -483,14 +482,13 @@ INNER JOIN BDGRUPOBI.DimTiempo t ON e.Tiempo_ID = t.Tiempo_ID
 GROUP BY t.Mes, t.Anio
 GO
 
-
 --10 Localidades que pagan mayor costo de envio
 CREATE VIEW BDGRUPOBI.vista_localidades_mayor_costo AS
 SELECT TOP 3
 u.Localidad,
 u.Provincia,
-ROW_NUMBER() OVER (ORDER BY he.ImporteEnvio DESC) AS puesto
-FROM BDGRUPOBI.HechoEnvios he 
+ROW_NUMBER() OVER (ORDER BY he.Costo_promedio) AS puesto
+FROM BDGRUPOBI.HechoEnvios he
 INNER JOIN BDGRUPOBI.DimUbicacion u ON u.Localidad_ID = he.Localidad_Cliente
 GO
 
