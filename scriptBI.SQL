@@ -319,6 +319,40 @@ GO
 
 
 --1 Ganancias
+
+/*
+--1 Ganancias SOLUCION QUE FUNCIONA
+CREATE VIEW BDGRUPOBI.vista_ganancias AS
+WITH Ventas AS (
+    SELECT 
+        v.Sucursal_ID, 
+        t.Anio,
+        t.Mes,
+        SUM(v.Total) AS TotalVentas
+    FROM BDGRUPOBI.HechoVentas v
+    INNER JOIN BDGRUPOBI.DimTiempo t ON v.Tiempo_ID = t.Tiempo_ID
+    GROUP BY v.Sucursal_ID, t.Anio, t.Mes
+),
+Compras AS (
+    SELECT 
+        c.Sucursal_ID, 
+        t.Anio,
+        t.Mes,
+        SUM(c.Total) AS TotalCompras
+    FROM BDGRUPOBI.HechoCompras c
+    INNER JOIN BDGRUPOBI.DimTiempo t ON c.Tiempo_ID = t.Tiempo_ID
+    GROUP BY c.Sucursal_ID, t.Anio, t.Mes
+)
+SELECT 
+    COALESCE(v.Sucursal_ID, c.Sucursal_ID) AS Sucursal_ID,
+    COALESCE(v.Anio, c.Anio) AS Anio,
+    COALESCE(v.Mes, c.Mes) AS Mes,
+    ISNULL(v.TotalVentas, 0) - ISNULL(c.TotalCompras, 0) AS ganancias
+FROM Ventas v
+FULL OUTER JOIN Compras c 
+    ON v.Sucursal_ID = c.Sucursal_ID AND v.Anio = c.Anio AND v.Mes = c.Mes
+GO
+*/
 CREATE VIEW BDGRUPOBI.vista_ganancias AS
 SELECT
     v.Sucursal_ID,
