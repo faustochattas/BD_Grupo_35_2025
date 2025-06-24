@@ -316,53 +316,15 @@ GO
 
 
 --1 Ganancias
-
-/*
---1 Ganancias SOLUCION QUE FUNCIONA
-CREATE VIEW BDGRUPOBI.vista_ganancias AS
-WITH Ventas AS (
-    SELECT 
-        v.Sucursal_ID, 
-        t.Anio,
-        t.Mes,
-        SUM(v.Total) AS TotalVentas
-    FROM BDGRUPOBI.HechoVentas v
-    INNER JOIN BDGRUPOBI.DimTiempo t ON v.Tiempo_ID = t.Tiempo_ID
-    GROUP BY v.Sucursal_ID, t.Anio, t.Mes
-),
-Compras AS (
-    SELECT 
-        c.Sucursal_ID, 
-        t.Anio,
-        t.Mes,
-        SUM(c.Total) AS TotalCompras
-    FROM BDGRUPOBI.HechoCompras c
-    INNER JOIN BDGRUPOBI.DimTiempo t ON c.Tiempo_ID = t.Tiempo_ID
-    GROUP BY c.Sucursal_ID, t.Anio, t.Mes
-)
-SELECT 
-    COALESCE(v.Sucursal_ID, c.Sucursal_ID) AS Sucursal_ID,
-    COALESCE(v.Anio, c.Anio) AS Anio,
-    COALESCE(v.Mes, c.Mes) AS Mes,
-    ISNULL(v.TotalVentas, 0) - ISNULL(c.TotalCompras, 0) AS ganancias
-FROM Ventas v
-FULL OUTER JOIN Compras c 
-    ON v.Sucursal_ID = c.Sucursal_ID AND v.Anio = c.Anio AND v.Mes = c.Mes
-GO
-*/
 CREATE VIEW BDGRUPOBI.vista_ganancias AS
 SELECT
-    v.Sucursal_ID,
+    S.Sucursal_ID,
     t.Mes,
     t.Anio,
-    SUM(v.total) - SUM(c.total) AS Ganancia
-FROM
-    BDGRUPOBI.HechoVentas v
-INNER JOIN BDGRUPOBI.DimSucursal s ON v.Sucursal_ID = s.Sucursal_ID
-INNER JOIN BDGRUPOBI.DimTiempo t ON v.Tiempo_ID = t.Tiempo_ID
-INNER JOIN BDGRUPOBI.HechoCompras c ON v.Sucursal_ID = c.Sucursal_ID AND v.Tiempo_ID = c.Tiempo_ID
-GROUP BY
-    v.sucursal_id, t.Mes, t.Anio
+    ((SELECT SUM(v.Total) FROM BDGRUPOBI.HechoVentas v WHERE v.Tiempo_ID = t.Tiempo_ID AND v.Sucursal_ID = s.Sucursal_ID) 
+		-  (SELECT SUM(c.Total) FROM BDGRUPOBI.HechoCompras c WHERE c.Tiempo_ID = t.Tiempo_ID AND c.Sucursal_ID = s.Sucursal_ID))  AS Ganancia
+FROM BDGRUPOBI.DimSucursal s
+UNION SELECT * FROM BDGRUPOBI.DimTiempo t
 GO
 
 --2 Factura Promedio Mensual
