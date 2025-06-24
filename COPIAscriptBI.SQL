@@ -278,23 +278,23 @@ GROUP BY t.Tiempo_ID, s.Sucursal_ID, m.Material_ID
 GO
 
 -- HechosPedidos
-INSERT INTO BDGRUPOBI.HechoPedidos (Pedido_Numero, Fecha_ID, Turno_ID, Cliente_ID, Sucursal_ID, Estado)
+INSERT INTO BDGRUPOBI.HechoPedidos (Tiempo_ID, Turno_ID, Sucursal_ID, Cantidad, Estado)
 SELECT
-	p.Pedido_Numero,
-	dm.Tiempo_ID,
+	t.Tiempo_ID,
     dt.Turno_ID,
 	p.Pedido_Cliente,
 	p.Pedido_Sucursal,
+    COUNT(DISTINCT p.Pedido_Numero),
 	de.Estado
 FROM BDGRUPO.Pedido p
-JOIN BDGRUPOBI.DimTiempo dm ON MONTH(p.Pedido_Fecha) = dm.Mes AND YEAR(p.Pedido_Fecha) = dm.Anio
+JOIN BDGRUPOBI.DimTiempo t ON MONTH(p.Pedido_Fecha) = t.Mes AND YEAR(p.Pedido_Fecha) = t.Anio
 JOIN BDGRUPOBI.DimTurno dt ON CONVERT(TIME, p.Pedido_Fecha) BETWEEN dt.Hora_Desde AND dt.Hora_Hasta
 JOIN BDGRUPOBI.DimEstadoPedido de ON p.Pedido_Estado = de.Estado
 GO
 
 -- HechoEnvios
-INSERT INTO BDGRUPOBI.HechoEnvios (Envio_Numero, Tiempo_ID, Localidad_Cliente, ImporteEnvio, CumplidoEnFecha)
-SELECT DISTINCT e.Envio_Numero,
+INSERT INTO BDGRUPOBI.HechoEnvios (Tiempo_ID, Localidad_Cliente, ImporteEnvio, CumplidoEnFecha)
+SELECT
     t.Tiempo_ID,
 	c.Cliente_Localidad, 
     e.Envio_Total,
