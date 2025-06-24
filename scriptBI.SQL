@@ -115,17 +115,19 @@ GO
 
 -- HECHO_VENTAS
 CREATE TABLE BDGRUPOBI.HechoVentas (
+    Venta_ID BIGINT,
+    Factura_Numero BIGINT,
     Tiempo_ID INT,
     TiempoFabricacion INT,
     Cliente_ID BIGINT,
     Sucursal_ID BIGINT,
     Sillon_Codigo BIGINT,
-    Total DECIMAL(12,2),
+    Total DECIMAL(10,2),
     FOREIGN KEY (Tiempo_ID) REFERENCES BDGRUPOBI.DimTiempo(Tiempo_ID),
     FOREIGN KEY (Cliente_ID) REFERENCES BDGRUPOBI.DimCliente(Cliente_ID),
     FOREIGN KEY (Sucursal_ID) REFERENCES BDGRUPOBI.DimSucursal(Sucursal_ID),
     FOREIGN KEY (Sillon_Codigo) REFERENCES BDGRUPOBI.DimSillon(Sillon_Codigo),
-    CONSTRAINT PK_HechoVentas PRIMARY KEY (Tiempo_ID, Cliente_ID, Sucursal_ID, Sillon_Codigo)
+    CONSTRAINT PK_HechoVentas PRIMARY KEY (Venta_ID, Factura_Numero)
 );
 GO
 
@@ -246,14 +248,16 @@ FROM BDGRUPO.Material;
 
 -- HechosVentas
 -- HechosVentas
-INSERT INTO BDGRUPOBI.HechoVentas (Tiempo_ID, TiempoFabricacion, Cliente_ID, Sucursal_ID, Sillon_Codigo, Total)
+INSERT INTO BDGRUPOBI.HechoVentas (Venta_ID, Factura_Numero, Tiempo_ID, TiempoFabricacion, Cliente_ID, Sucursal_ID, Sillon_Codigo, Total)
 SELECT
+    fd.Detalle_ID,
+    f.Factura_Numero,
     t.Tiempo_ID,
     DATEDIFF(HOUR, p.Pedido_Fecha, f.Factura_Fecha) AS TiempoFabricacion,
     p.Pedido_Cliente,
     f.Factura_Sucursal,
     dp.Sillon_Codigo,
-    f.Factura_Total
+    fd.Detalle_Factura_SubTotal
 FROM BDGRUPO.Factura f
 JOIN BDGRUPO.FacturaDetalle fd ON f.Factura_Numero = fd.Factura_Numero
 JOIN BDGRUPO.DetallePedido dp ON fd.Detalle_Factura_Pedido_ID = dp.Detalle_Pedido_ID
