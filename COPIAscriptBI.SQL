@@ -250,7 +250,7 @@ SELECT
 FROM BDGRUPO.Factura f
 JOIN BDGRUPO.FacturaDetalle fd ON f.Factura_Numero = fd.Factura_Numero
 JOIN BDGRUPO.DetallePedido dp ON fd.Detalle_Factura_Pedido_ID = dp.Detalle_Pedido_ID
-JOIN BDGRUPO.Pedido p ON p.Pedido_Numero = dp.Detalle_Pedido_ID
+JOIN BDGRUPO.Pedido p ON p.Pedido_Numero = dp.Pedido_Numero
 JOIN BDGRUPO.Cliente c ON c.Cliente_Dni = p.Pedido_Cliente
 JOIN BDGRUPO.Sillon si ON si.Sillon_Codigo = dp.Sillon_Codigo
 JOIN BDGRUPOBI.DimSillon s ON s.Modelo = si.Sillon_Modelo_Codigo
