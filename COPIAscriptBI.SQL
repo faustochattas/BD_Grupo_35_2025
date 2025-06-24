@@ -324,7 +324,7 @@ SELECT
     ((SELECT SUM(v.Total) FROM BDGRUPOBI.HechoVentas v WHERE v.Tiempo_ID = t.Tiempo_ID AND v.Sucursal_ID = s.Sucursal_ID) 
 		-  (SELECT SUM(c.Total) FROM BDGRUPOBI.HechoCompras c WHERE c.Tiempo_ID = t.Tiempo_ID AND c.Sucursal_ID = s.Sucursal_ID))  AS Ganancia
 FROM BDGRUPOBI.DimSucursal s
-UNION SELECT * FROM BDGRUPOBI.DimTiempo t
+CROSS JOIN BDGRUPOBI.DimTiempo t
 GO
 
 --2 Factura Promedio Mensual
