@@ -45,3 +45,65 @@ JOIN BDGRUPOBI.DimTiempo d ON v.Tiempo_ID = d.Tiempo_ID
 GROUP BY v.Sucursal_ID, v.Tiempo_ID, d.Mes, d.Anio
 ORDER BY d.Anio, d.Mes
 
+-- CONSULTAR SI HAY PEDIDOS CON ESTADO PENDIENTE
+SELECT
+    p.Pedido_Numero,
+    p.Pedido_Estado
+    FROM  BDGRUPO.Pedido P
+WHERE p.Pedido_Estado = 'Cancelado';
+
+select * from bdgrupo.DetallePedido
+
+
+--consulta que me de Cantidad de pedidos registrados por turno (8 a 14) y (14 a 20), en la sucursal 37 según el mes de cada año.  
+SELECT
+    YEAR(Pedido_Fecha) AS Anio,
+    MONTH(Pedido_Fecha) AS Mes,
+    CASE 
+        WHEN CAST(FORMAT(Pedido_Fecha, 'HH') AS INT) BETWEEN 8 AND 13 THEN 'Turno Mañana (8-14)'
+        WHEN CAST(FORMAT(Pedido_Fecha, 'HH') AS INT) BETWEEN 14 AND 19 THEN 'Turno Tarde (14-20)'
+        ELSE 'Fuera de turno'
+    END AS Turno,
+    COUNT(*) AS Cantidad_Pedidos
+FROM BDGRUPO.Pedido
+WHERE Pedido_Sucursal = 37
+  AND Pedido_Fecha IS NOT NULL
+  AND CAST(FORMAT(Pedido_Fecha, 'HH') AS INT) BETWEEN 8 AND 19
+GROUP BY 
+    YEAR(Pedido_Fecha),
+    MONTH(Pedido_Fecha),
+    CASE 
+        WHEN CAST(FORMAT(Pedido_Fecha, 'HH') AS INT) BETWEEN 8 AND 13 THEN 'Turno Mañana (8-14)'
+        WHEN CAST(FORMAT(Pedido_Fecha, 'HH') AS INT) BETWEEN 14 AND 19 THEN 'Turno Tarde (14-20)'
+        ELSE 'Fuera de turno'
+    END
+ORDER BY Anio, Mes, Turno;
+
+--Promedio de Compras: importe promedio de compras por mes. 
+SELECT
+    YEAR(Compra_Fecha) AS Anio,
+    MONTH(Compra_Fecha) AS Mes,
+    AVG(Compra_Total) AS Importe_Promedio_Compras,
+    COUNT(*) AS Cantidad_Compras
+FROM BDGRUPO.Compra
+GROUP BY
+    YEAR(Compra_Fecha),
+    MONTH(Compra_Fecha)
+ORDER BY
+    Anio,
+    Mes;
+
+--Total compras transaccional y BI
+SELECT 
+    sum(c.Compra_Total),
+    YEAR(c.Compra_Fecha)
+    from BDGRUPO.Compra c
+group by YEAR(c.Compra_Fecha)
+
+SELECT
+    SUM(b.Total) AS Total_Compras_BI,
+    d.Anio
+    FROM BDGRUPOBI.HechoCompras b
+    JOIN BDGRUPOBI.DimTiempo d ON b.Tiempo_ID = d.Tiempo_ID
+    GROUP BY d.Anio
+
