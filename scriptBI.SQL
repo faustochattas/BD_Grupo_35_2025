@@ -358,61 +358,25 @@ GROUP BY u.Provincia, t.Cuatrimestre, t.Anio
 GO
 
 --3 Rendimiento de Modelos
--- CREATE VIEW BDGRUPOBI.vista_rendimiento_modelos AS
--- SELECT
---     u.Localidad,
---     re.RangoEtario,
---     t.Cuatrimestre,
---     t.Anio,
---     d.Modelo
--- FROM BDGRUPOBI.HechoVentas v
--- JOIN BDGRUPOBI.Dimsucursal s ON v.Sucursal_ID = s.Sucursal_ID
--- JOIN BDGRUPOBI.DimUbicacion u ON s.Localidad_ID = u.Localidad_ID
--- JOIN BDGRUPOBI.DimTiempo t ON v.Tiempo_ID = t.Tiempo_ID
--- JOIN BDGRUPOBI.DimRangoEtario re ON v.RangoEtario = re.RangoEtario
--- JOIN BDGRUPOBI.DimSillon d ON v.Sillon_Modelo = d.Modelo
--- WHERE d.Modelo IN (
--- 	SELECT TOP 3 v.Sillon_Modelo
--- 	FROM BDGRUPOBI.HechoVentas v2
--- 	WHERE v2.Tiempo_ID = t.Tiempo_ID AND v2.Sucursal_ID = s.Sucursal_ID AND v2.RangoEtario = re.RangoEtario
--- 	GROUP BY v2.Sillon_Modelo, v2.Tiempo_ID, v2.Sucursal_ID, v2.RangoEtario
--- 	ORDER BY ISNULL(SUM(v2.Total), 0) DESC
--- )
--- GROUP BY u.Localidad, re.RangoEtario, t.Cuatrimestre, t.Anio, d.Modelo
--- GO
-
---3 Rendimiento de Modelos
 CREATE VIEW BDGRUPOBI.vista_rendimiento_modelos AS
 SELECT
     t.Anio,
     t.Cuatrimestre,
     u.Localidad,
     re.RangoEtario,
-    (
-        SELECT TOP 1 v2.Sillon_Modelo
-        FROM BDGRUPOBI.HechoVentas v2
-        WHERE v2.Tiempo_ID = MIN(t.Tiempo_ID)
-          AND v2.Sucursal_ID = MIN(s.Sucursal_ID)
-          AND v2.RangoEtario = MIN(re.RangoEtario)
+    (SELECT TOP 1 v2.Sillon_Modelo FROM BDGRUPOBI.HechoVentas v2
+        WHERE v2.Tiempo_ID = MIN(t.Tiempo_ID) AND v2.Sucursal_ID = MIN(s.Sucursal_ID) AND v2.RangoEtario = MIN(re.RangoEtario)
         GROUP BY v2.Sillon_Modelo
         ORDER BY SUM(v2.Total) DESC
     ) AS PrimerModelo,
-    (
-        SELECT v2.Sillon_Modelo
-        FROM BDGRUPOBI.HechoVentas v2
-        WHERE v2.Tiempo_ID = MIN(t.Tiempo_ID)
-          AND v2.Sucursal_ID = MIN(s.Sucursal_ID)
-          AND v2.RangoEtario = MIN(re.RangoEtario)
+    (SELECT v2.Sillon_Modelo FROM BDGRUPOBI.HechoVentas v2
+        WHERE v2.Tiempo_ID = MIN(t.Tiempo_ID) AND v2.Sucursal_ID = MIN(s.Sucursal_ID) AND v2.RangoEtario = MIN(re.RangoEtario)
         GROUP BY v2.Sillon_Modelo
         ORDER BY SUM(v2.Total) DESC
         OFFSET 1 ROWS FETCH NEXT 1 ROW ONLY
     ) AS SegundoModelo,
-    (
-        SELECT v2.Sillon_Modelo
-        FROM BDGRUPOBI.HechoVentas v2
-        WHERE v2.Tiempo_ID = MIN(t.Tiempo_ID)
-          AND v2.Sucursal_ID = MIN(s.Sucursal_ID)
-          AND v2.RangoEtario = MIN(re.RangoEtario)
+    (SELECT v2.Sillon_Modelo FROM BDGRUPOBI.HechoVentas v2
+        WHERE v2.Tiempo_ID = MIN(t.Tiempo_ID) AND v2.Sucursal_ID = MIN(s.Sucursal_ID) AND v2.RangoEtario = MIN(re.RangoEtario)
         GROUP BY v2.Sillon_Modelo
         ORDER BY SUM(v2.Total) DESC
         OFFSET 2 ROWS FETCH NEXT 1 ROW ONLY
@@ -422,13 +386,8 @@ JOIN BDGRUPOBI.DimTiempo t ON v.Tiempo_ID = t.Tiempo_ID
 JOIN BDGRUPOBI.DimSucursal s ON v.Sucursal_ID = s.Sucursal_ID
 JOIN BDGRUPOBI.DimUbicacion u ON s.Localidad_ID = u.Localidad_ID
 JOIN BDGRUPOBI.DimRangoEtario re ON v.RangoEtario = re.RangoEtario
-GROUP BY
-    t.Anio,
-    t.Cuatrimestre,
-    u.Localidad,
-    re.RangoEtario;
+GROUP BY t.Anio, t.Cuatrimestre, u.Localidad, re.RangoEtario;
 GO
-
 
 --4 Volumen de Pedidos
 CREATE VIEW BDGRUPOBI.vista_volumen_pedidos AS
@@ -477,15 +436,9 @@ GO
 --7 Promedio de Compras
 CREATE VIEW BDGRUPOBI.vista_promedio_compras AS
 SELECT
-    AVG(ca.subtotal_total_compra) AS importe_promedio_compra,
-    ca.Mes,
-    ca.Anio
+    AVG(ca.subtotal_total_compra) AS importe_promedio_compra, ca.Mes, ca.Anio
 FROM (
-    SELECT 
-        c.Compra_Numero,
-        t.Mes,
-        t.Anio,
-        SUM(dc.Detalle_Compra_Precio * dc.Detalle_Compra_Cantidad) AS subtotal_total_compra
+    SELECT c.Compra_Numero, t.Mes, t.Anio, SUM(dc.Detalle_Compra_Precio * dc.Detalle_Compra_Cantidad) AS subtotal_total_compra
     FROM BDGRUPO.Compra c
     JOIN BDGRUPO.DetalleCompra dc ON c.Compra_Numero = dc.Compra_Numero
     JOIN BDGRUPOBI.DimTiempo t ON YEAR(c.Compra_Fecha) = t.Anio AND MONTH(c.Compra_Fecha) = t.Mes
