@@ -246,7 +246,7 @@ SELECT
     re.RangoEtario,
     s.Modelo,
     SUM(fd.Detalle_Factura_SubTotal),
-    AVG(DATEDIFF(HOUR, p.Pedido_Fecha, f.Factura_Fecha)) AS TiempoFabricacion
+    AVG(DATEDIFF(DAY, p.Pedido_Fecha, f.Factura_Fecha)) AS TiempoFabricacion
 FROM BDGRUPO.Factura f
 JOIN BDGRUPO.FacturaDetalle fd ON f.Factura_Numero = fd.Factura_Numero
 JOIN BDGRUPO.DetallePedido dp ON fd.Detalle_Factura_Pedido_ID = dp.Detalle_Pedido_ID
@@ -409,14 +409,13 @@ CREATE VIEW BDGRUPOBI.vista_conversion_pedidos AS
 SELECT
     AVG(p.Porcentaje_conversion) AS Porcentaje_conversion,
     e.Estado,
-    t.Anio,
     t.Cuatrimestre,
     s.Sucursal_ID
 FROM BDGRUPOBI.HechoPedidos p
 INNER JOIN BDGRUPOBI.DimEstadoPedido e ON p.Estado = e.Estado
 INNER JOIN BDGRUPOBI.DimTiempo t ON p.Tiempo_ID = t.Tiempo_ID
 INNER JOIN BDGRUPOBI.DimSucursal s ON p.Sucursal_ID = s.Sucursal_ID
-GROUP BY e.Estado, t.Anio, t.Cuatrimestre, s.Sucursal_ID;
+GROUP BY e.Estado, t.Cuatrimestre, s.Sucursal_ID
 GO
 
 --6 Tiempo promedio de fabricacion
@@ -424,13 +423,12 @@ CREATE VIEW BDGRUPOBI.vista_tiempo_promedio_fabricacion AS
 SELECT
     AVG(v.TiempoFabricacion) AS tiempo_promedio_fabricacion_horas,
     s.Sucursal_ID,
-    t.Cuatrimestre,
-    t.Anio
+    t.Cuatrimestre
 FROM
 BDGRUPOBI.HechoVentas v 
 INNER JOIN BDGRUPOBI.DimSucursal s ON v.Sucursal_ID = s.Sucursal_ID
 INNER JOIN BDGRUPOBI.DimTiempo t ON v.Tiempo_ID = t.Tiempo_ID
-GROUP BY s.Sucursal_ID, t.Cuatrimestre, t.Anio
+GROUP BY s.Sucursal_ID, t.Cuatrimestre
 GO
 
 --7 Promedio de Compras

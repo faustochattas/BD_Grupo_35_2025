@@ -107,3 +107,21 @@ SELECT
     JOIN BDGRUPOBI.DimTiempo d ON b.Tiempo_ID = d.Tiempo_ID
     GROUP BY d.Anio
 
+Select * 
+from bdgrupo.Pedido p
+where p.Pedido_Sucursal = 37
+and p.Pedido_Estado = 'entregado'
+and p.Pedido_Numero = '56360536'
+
+
+select * from bdgrupo.Factura f
+join bdgrupo.FacturaDetalle df on f.Factura_Numero = df.Factura_Numero
+where f.Factura_Sucursal = 37
+and df.Detalle_Factura_Pedido_ID = '56360536'
+
+select F.Factura_Fecha, P.Pedido_Fecha from BDGRUPO.FacturaDetalle
+join BDGRUPO.DetallePedido dp on FacturaDetalle.Detalle_Factura_Pedido_ID = dp.Detalle_Pedido_ID
+JOIN BDGRUPO.Factura f ON FacturaDetalle.Factura_Numero = f.Factura_Numero
+JOIN BDGRUPO.Pedido p ON dp.Pedido_Numero = p.Pedido_Numero
+where dp.Pedido_Numero = '56360536'
+order by Detalle_Factura_Pedido_ID
